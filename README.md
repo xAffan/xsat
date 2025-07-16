@@ -34,8 +34,7 @@ A comprehensive SAT practice quiz application built with Flutter, designed to he
 - **Question Navigation**: Seamless navigation between questions with state preservation
 
 ### 📤 Sharing & Export
-- **Question Sharing**: Share questions as images or PDF files
-- **Export Functionality**: Generate PDFs of questions for offline study
+- **Question Sharing**: Share questions as PDF files
 - **Cross-platform Sharing**: Native sharing integration for all supported platforms
 
 ### ⚙️ Settings & Customization
@@ -169,8 +168,7 @@ lib/
 
 ### Sharing Questions
 1. While viewing a question, tap the share icon
-2. Choose to share as an image or generate a PDF
-3. Use your device's native sharing options
+2. Use your device's native sharing options
 
 ## Testing
 
@@ -217,9 +215,7 @@ We welcome contributions! Please follow these guidelines:
 ## Performance Optimizations
 
 ### Caching Strategy
-- **Local Question Cache**: Frequently accessed questions are cached locally
-- **Image Caching**: Question images are cached for faster loading
-- **Metadata Persistence**: Question metadata is stored for offline access
+- **Local Question Cache**: Accessed questions are cached locally to prevent them from reappearing
 
 ### Memory Management
 - **Efficient State Updates**: Minimal rebuilds using Provider's fine-grained updates
@@ -227,9 +223,7 @@ We welcome contributions! Please follow these guidelines:
 - **Lazy Loading**: Questions are loaded on-demand to reduce memory usage
 
 ### Network Optimization
-- **Request Batching**: Multiple API calls are batched when possible
 - **Error Handling**: Robust error handling with user-friendly messages
-- **Offline Support**: Cached content available when network is unavailable
 
 ## Deployment
 
