@@ -1,4 +1,4 @@
-# SAT Quiz App
+# xSAT: Quiz
 
 A comprehensive SAT practice quiz application built with Flutter, designed to help students prepare for the SAT with an intuitive interface and advanced filtering capabilities.
 
@@ -107,6 +107,9 @@ A comprehensive SAT practice quiz application built with Flutter, designed to he
 
 #### macOS
 - macOS 10.14 or higher
+
+#### Linux
+- GTK libraries and compatible desktop environment
 
 #### Web
 - Modern web browsers with JavaScript enabled
@@ -249,6 +252,11 @@ flutter build windows --release
 ### macOS Deployment
 ```bash
 flutter build macos --release
+```
+
+### Linux Deployment
+```bash
+flutter build linux --release
 ```
 
 ### Web Deployment
