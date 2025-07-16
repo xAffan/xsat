@@ -2,6 +2,12 @@
 
 A comprehensive SAT practice quiz application built with Flutter, designed to help students prepare for the SAT with an intuitive interface and advanced filtering capabilities.
 
+## 🌐 Live Demo
+
+**Try the app now**: [https://xaffan.github.io/sat_quiz/](https://xaffan.github.io/sat_quiz/)
+
+*The web version is fully functional and includes all features available except the sharing functionality in the native app.*
+
 ## Features
 
 ### 🎯 Quiz Functionality
