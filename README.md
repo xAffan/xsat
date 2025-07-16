@@ -242,23 +242,15 @@ flutter build web --release
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNU V3 License - see the LICENSE file for details.
 
 ## Support
 
 For support, bug reports, or feature requests:
 - Open an issue on GitHub
-- Contact the development team
-- Check the documentation for common solutions
+- Contact me: affanquddus1122@gmail.com
 
 ## Acknowledgments
 
 - Flutter team for the excellent framework
 - Material Design team for design guidelines
-- Contributors and testers who helped improve the app
-
----
-
-**Version**: 1.0.0  
-**Last Updated**: July 2025  
-**Flutter Version**: 3.6.0+
