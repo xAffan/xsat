@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
           );
 
           return MaterialApp(
-            title: 'Flutter Quiz App',
+            title: 'xSAT',
             theme: lightTheme,
             darkTheme: settingsProvider.isOledMode ? oledDarkTheme : darkTheme,
             themeMode: settingsProvider.themeMode,
