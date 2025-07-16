@@ -10,8 +10,9 @@ jobs:
     steps:  
       - name: Checkout repository  
         uses: actions/checkout@v4  
-        with:  
-          persist-credentials: false   # avoid using the default token for checkout  
+        with:
+          persist-credentials: true
+          fetch-depth: 0       
 
       - name: Setup Flutter  
         uses: subosito/flutter-action@v2  
