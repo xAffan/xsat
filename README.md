@@ -1,4 +1,4 @@
-# xSAT: Quiz
+# xSAT
 
 A comprehensive SAT practice quiz application built with Flutter, designed to help students prepare for the SAT with an intuitive interface and advanced filtering capabilities.
 
