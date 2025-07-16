@@ -11,11 +11,13 @@ import '../providers/quiz_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/filter_provider.dart';
 import '../services/share_service.dart';
+import '../services/sound_service.dart';
 import '../utils/html_processor.dart';
 import '../widgets/answer_option.dart';
 import '../widgets/collapsible_rationale_popup.dart';
 import '../widgets/themed_button.dart';
 import '../widgets/question_info_modal.dart';
+import '../widgets/question_count_widget.dart';
 import '../widgets/no_results_widget.dart';
 import 'settings_screen.dart';
 
@@ -33,18 +35,26 @@ class _QuizScreenState extends State<QuizScreen> {
   // Create ShareService instance directly instead of using Provider
   late final ShareService _shareService;
 
+  // Create SoundService instance
+  late final SoundService _soundService;
+
   // Popup state management for rationale display
-  bool _isRationaleExpanded =
-      false; // Controls whether popup content is expanded
+  bool _isRationaleVisible = false; // Controls whether popup is visible
 
   // Store filter provider reference to avoid accessing context in dispose
   FilterProvider? _filterProvider;
+
+  // Scroll controller for ensuring MCQ options are visible
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     // Initialize ShareService
     _shareService = ShareService();
+
+    // Initialize SoundService
+    _soundService = SoundService();
 
     // Initialize the quiz after the first frame is built to ensure
     // that the providers are available in the widget tree.
@@ -78,6 +88,8 @@ class _QuizScreenState extends State<QuizScreen> {
   void dispose() {
     // Remove filter listener using stored reference
     _filterProvider?.removeListener(_onFiltersChanged);
+    // Dispose scroll controller
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -149,23 +161,42 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Shows the rationale popup when answer is submitted
   void _showRationalePopup() {
-    setState(() {
-      _isRationaleExpanded =
-          true; // Start expanded by default for inline version
-    });
-  }
+    // Add a small delay to ensure layout is complete before showing popup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _isRationaleVisible = true;
+        });
 
-  /// Toggles the expansion state of the rationale popup
-  void _toggleRationaleExpansion() {
-    setState(() {
-      _isRationaleExpanded = !_isRationaleExpanded;
+        // Scroll to ensure MCQ options are visible when rationale appears
+        _scrollToShowAnswerOptions();
+      }
     });
   }
 
   /// Resets popup state when navigating to next question
   void _resetPopupState() {
     setState(() {
-      _isRationaleExpanded = false;
+      _isRationaleVisible = false;
+    });
+  }
+
+  /// Scrolls to ensure answer options are visible when rationale popup appears
+  void _scrollToShowAnswerOptions() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && mounted) {
+        try {
+          // Scroll to show the answer area when rationale popup appears
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent * 0.7,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        } catch (e) {
+          // Silently handle scroll errors during layout transitions
+          debugPrint('Scroll error handled: $e');
+        }
+      }
     });
   }
 
@@ -244,14 +275,49 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
+  /// Handles submitting the answer with sound effects
+  void _handleSubmitAnswer(QuizProvider provider) {
+    final question = provider.currentQuestion!;
+    final selectedAnswer = provider.selectedAnswerId;
+
+    // Submit the answer
+    provider.submitAnswer();
+
+    // Play sound based on whether answer is correct
+    final settingsProvider = context.read<SettingsProvider>();
+    if (settingsProvider.soundEnabled) {
+      if (question.type == 'mcq') {
+        // For MCQ, check if selected answer matches correct key
+        final isCorrect = selectedAnswer == question.correctKey;
+        if (isCorrect) {
+          _soundService.playCorrectSound();
+        } else {
+          _soundService.playWrongSound();
+        }
+      } else if (question.type == 'spr') {
+        // For short response, compare text
+        final isCorrect = question.correctKey.trim().toLowerCase() ==
+            selectedAnswer?.toString().trim().toLowerCase();
+        if (isCorrect) {
+          _soundService.playCorrectSound();
+        } else {
+          _soundService.playWrongSound();
+        }
+      }
+    }
+
+    // Show rationale popup
+    _showRationalePopup();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Watch providers to react to changes in quiz state or settings.
+    // Watch providers to react to changes in quiz state and settings
     final quizProvider = context.watch<QuizProvider>();
     final settingsProvider = context.watch<SettingsProvider>();
 
-    // If settings have changed, schedule the dialog to be shown after the build.
-    if (settingsProvider.settingsHaveChanged) {
+    // If settings that need restart have changed, show dialog
+    if (settingsProvider.hasSettingsChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Ensure dialog isn't shown if another one is already on screen
         if (ModalRoute.of(context)?.isCurrent == true) {
@@ -262,7 +328,24 @@ class _QuizScreenState extends State<QuizScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('SAT Question Bank Quiz', style: GoogleFonts.poppins()),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('SAT Question Bank Quiz', style: GoogleFonts.poppins()),
+            // Always show question count
+            Consumer<FilterProvider>(
+              builder: (context, filterProvider, child) {
+                return QuestionCountWidget(
+                  showProgress: true, // Show Question X of Y format
+                  textStyle: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         backgroundColor: const Color.fromARGB(255, 76, 118, 166),
         foregroundColor: Colors.white,
         actions: [
@@ -453,6 +536,7 @@ class _QuizScreenState extends State<QuizScreen> {
               child: LayoutBuilder(
                 builder: (context, viewportConstraints) {
                   return SingleChildScrollView(
+                    controller: _scrollController,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         minHeight: viewportConstraints.maxHeight,
@@ -482,28 +566,21 @@ class _QuizScreenState extends State<QuizScreen> {
                 },
               ),
             ),
-            // Inline collapsible rationale section
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              transitionBuilder: (child, animation) {
-                return SizeTransition(
-                  sizeFactor: CurvedAnimation(
-                      parent: animation, curve: Curves.easeInOut),
-                  child: FadeTransition(opacity: animation, child: child),
-                );
-              },
-              child: provider.state == QuizState.answered
-                  ? CollapsibleRationalePopup(
-                      key: const ValueKey('rationale_section'),
-                      rationale: question.rationale,
-                      isVisible:
-                          true, // Always visible when answer is submitted
-                      onToggle: _toggleRationaleExpansion,
-                      onDismiss: null, // No dismiss for inline version
-                      initiallyExpanded: true, // Expanded by default
-                    )
-                  : const SizedBox.shrink(),
-            ),
+            // Collapsible rationale popup (inline, not overlay)
+            if (provider.state == QuizState.answered)
+              CollapsibleRationalePopup(
+                rationale: question.rationale,
+                isVisible: _isRationaleVisible,
+                initiallyExpanded: true,
+                onToggle: () {
+                  // Optional: add any toggle logic here
+                },
+                onDismiss: () {
+                  setState(() {
+                    _isRationaleVisible = false;
+                  });
+                },
+              ),
             Container(
               padding: const EdgeInsets.all(16.0),
               width: double.infinity,
@@ -530,15 +607,11 @@ class _QuizScreenState extends State<QuizScreen> {
                       )
                     : ThemedButton(
                         key: const ValueKey('submit_button'),
-                        text: 'Submit',
-                        onPressed: provider.selectedAnswerId != null &&
-                                provider.selectedAnswerId
-                                    .toString()
-                                    .trim()
-                                    .isNotEmpty
+                        text: "Submit Answer",
+                        onPressed: provider.selectedAnswerId != null
                             ? () {
-                                provider.submitAnswer();
-                                _showRationalePopup();
+                                // Use the new method to handle answer submission
+                                _handleSubmitAnswer(provider);
                               }
                             : null,
                       ),

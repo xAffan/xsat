@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/filter_provider.dart';
+import '../providers/quiz_provider.dart';
 import '../widgets/filter_chip_bar.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -14,8 +15,9 @@ class SettingsScreen extends StatelessWidget {
         // Colors are now inherited from the theme, no hardcoding needed
         title: const Text('Settings'),
       ),
-      body: Consumer<SettingsProvider>(
-        builder: (context, provider, child) {
+      body: Consumer3<SettingsProvider, FilterProvider, QuizProvider>(
+        builder:
+            (context, settingsProvider, filterProvider, quizProvider, child) {
           return ListView(
             children: [
               _SettingsHeader('Appearance'),
@@ -37,9 +39,9 @@ class SettingsScreen extends StatelessWidget {
                         label: Text('Dark'),
                         icon: Icon(Icons.brightness_2)),
                   ],
-                  selected: {provider.themePreference},
+                  selected: {settingsProvider.themePreference},
                   onSelectionChanged: (Set<ThemePreference> newSelection) {
-                    provider.updateThemePreference(newSelection.first);
+                    settingsProvider.updateThemePreference(newSelection.first);
                   },
                 ),
               ),
@@ -47,9 +49,9 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('OLED Dark Mode'),
                 subtitle:
                     const Text('Use a true black background for dark mode'),
-                value: provider.isOledMode,
+                value: settingsProvider.isOledMode,
                 onChanged: (bool value) {
-                  provider.toggleOledMode(value);
+                  settingsProvider.toggleOledMode(value);
                 },
               ),
               const Divider(),
@@ -72,9 +74,13 @@ class SettingsScreen extends StatelessWidget {
                         label: Text('Both'),
                         icon: Icon(Icons.functions)),
                   ],
-                  selected: {provider.questionType},
+                  selected: {settingsProvider.questionType},
                   onSelectionChanged: (Set<QuestionType> newSelection) {
-                    provider.updateQuestionType(newSelection.first);
+                    settingsProvider.updateQuestionType(newSelection.first);
+                    // Also update the filter provider instantly
+                    filterProvider.updateQuestionType(newSelection.first);
+                    // Update quiz pool with new filters
+                    quizProvider.updateQuestionPool(filterProvider);
                   },
                 ),
               ),
@@ -82,9 +88,13 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('Exclude active questions'),
                 subtitle: const Text(
                     'Hide questions that are on the official practice tests.'),
-                value: provider.excludeActiveQuestions,
+                value: settingsProvider.excludeActiveQuestions,
                 onChanged: (bool value) {
-                  provider.toggleExcludeActiveQuestions(value);
+                  settingsProvider.toggleExcludeActiveQuestions(value);
+                  // Also update the filter provider instantly
+                  filterProvider.updateExcludeActiveQuestions(value);
+                  // Update quiz pool with new filters
+                  quizProvider.updateQuestionPool(filterProvider);
                 },
               ),
               const Divider(),
@@ -104,6 +114,45 @@ class SettingsScreen extends StatelessWidget {
                     );
                   }
 
+                  // Filter categories based on selected question type
+                  final questionType = settingsProvider.questionType;
+
+                  Widget buildFilterSection(
+                      String title, List<String> categories,
+                      {bool isLast = false}) {
+                    if (categories.isEmpty) return const SizedBox.shrink();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FilterChipBar(
+                          availableFilters: categories,
+                          activeFilters: filterProvider.activeFilters,
+                          onFilterToggle: (category) {
+                            filterProvider.toggleFilter(category);
+                            quizProvider.updateQuestionPool(filterProvider);
+                          },
+                          onClearAll: () {
+                            filterProvider.clearFilters();
+                            quizProvider.updateQuestionPool(filterProvider);
+                          },
+                        ),
+                        // Add visual separator between sections when both subjects are shown
+                        if (questionType == QuestionType.both && !isLast)
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 0.0), // Reduced from 16.0 to 0.0
+                            height: 1,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outline
+                                .withOpacity(0.2),
+                          ),
+                      ],
+                    );
+                  }
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -115,16 +164,25 @@ class SettingsScreen extends StatelessWidget {
                           style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                       ),
-                      FilterChipBar(
-                        availableFilters: availableCategories,
-                        activeFilters: filterProvider.activeFilters,
-                        onFilterToggle: (category) {
-                          filterProvider.toggleFilter(category);
-                        },
-                        onClearAll: () {
-                          filterProvider.clearFilters();
-                        },
-                      ),
+
+                      // Show filters based on question type selection
+                      if (questionType == QuestionType.english ||
+                          questionType == QuestionType.both)
+                        buildFilterSection(
+                          'English Categories',
+                          filterProvider.getAvailableFilterCategoriesForSubject(
+                              'English'),
+                        ),
+
+                      if (questionType == QuestionType.math ||
+                          questionType == QuestionType.both)
+                        buildFilterSection(
+                          'Math Categories',
+                          filterProvider
+                              .getAvailableFilterCategoriesForSubject('Math'),
+                          isLast: true,
+                        ),
+
                       if (filterProvider.hasActiveFilters)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -148,9 +206,9 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('Cache Answered Questions'),
                 subtitle:
                     const Text('Prevent answered questions from reappearing.'),
-                value: provider.isCachingEnabled,
+                value: settingsProvider.isCachingEnabled,
                 onChanged: (bool value) {
-                  provider.toggleCaching(value);
+                  settingsProvider.toggleCaching(value);
                 },
               ),
               ListTile(
@@ -176,7 +234,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   );
                   if (confirm == true) {
-                    provider.clearCache();
+                    settingsProvider.clearCache();
                   }
                 },
               ),

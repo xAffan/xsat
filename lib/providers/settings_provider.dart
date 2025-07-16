@@ -15,7 +15,8 @@ class SettingsProvider with ChangeNotifier {
   ThemePreference _themePreference = ThemePreference.system; // New
   bool _isOledMode = false; // New
   bool _excludeActiveQuestions = false; // New
-  bool settingsHaveChanged = false; // Flag to check if a reload is needed
+  bool _onboardingCompleted = false; // New
+  bool settingsHaveChanged = false; // Flag for settings that truly need restart
 
   // Getters
   bool get isCachingEnabled => _isCachingEnabled;
@@ -23,6 +24,11 @@ class SettingsProvider with ChangeNotifier {
   ThemePreference get themePreference => _themePreference; // New
   bool get isOledMode => _isOledMode; // New
   bool get excludeActiveQuestions => _excludeActiveQuestions; // New
+  bool get onboardingCompleted => _onboardingCompleted; // New
+  bool get hasSettingsChanged => settingsHaveChanged; // New
+
+  // Sounds are always enabled - no setting needed
+  bool get soundEnabled => true;
 
   // Convert our enum to Flutter's ThemeMode for the MaterialApp
   ThemeMode get themeMode {
@@ -47,13 +53,14 @@ class SettingsProvider with ChangeNotifier {
     _isOledMode = await _cacheService.isOledMode(); // New
     _excludeActiveQuestions =
         await _cacheService.getExcludeActiveQuestions(); // New
+    _onboardingCompleted = await _cacheService.isOnboardingCompleted(); // New
     notifyListeners();
   }
 
   Future<void> toggleCaching(bool value) async {
     _isCachingEnabled = value;
     await _cacheService.setCachingEnabled(value);
-    settingsHaveChanged = true;
+    // Caching changes don't require restart, they affect future behavior
     notifyListeners();
   }
 
@@ -61,7 +68,7 @@ class SettingsProvider with ChangeNotifier {
     if (_questionType == newType) return;
     _questionType = newType;
     await _cacheService.setQuestionType(newType);
-    settingsHaveChanged = true;
+    // Question type changes apply instantly, no restart needed
     notifyListeners();
   }
 
@@ -82,15 +89,23 @@ class SettingsProvider with ChangeNotifier {
   Future<void> toggleExcludeActiveQuestions(bool value) async {
     _excludeActiveQuestions = value;
     await _cacheService.setExcludeActiveQuestions(value);
-    settingsHaveChanged = true;
+    // Exclude active questions now applies instantly, no restart needed
+    notifyListeners();
+  }
+
+  Future<void> setOnboardingCompleted(bool value) async {
+    _onboardingCompleted = value;
+    await _cacheService.setOnboardingCompleted(value);
     notifyListeners();
   }
 
   Future<void> clearCache() async {
     await _cacheService.clearSeenQuestions();
-    settingsHaveChanged = true;
+    // Cache clearing doesn't need restart - just clears the seen questions list
+    notifyListeners();
   }
 
+  // Method to reset settings change flag
   void appliedChanges() {
     settingsHaveChanged = false;
   }
@@ -142,5 +157,15 @@ extension on CacheService {
   Future<bool> getExcludeActiveQuestions() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('exclude_active_questions') ?? false;
+  }
+
+  Future<void> setOnboardingCompleted(bool isCompleted) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', isCompleted);
+  }
+
+  Future<bool> isOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('onboarding_completed') ?? false;
   }
 }

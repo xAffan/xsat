@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/question_identifier.dart';
 import '../services/category_mapping_service.dart';
+import '../providers/settings_provider.dart';
 
 /// Provider for managing filter state and filtering questions by categories
 /// Supports persistence across app sessions and OR logic for multiple filters
@@ -21,6 +22,17 @@ class FilterProvider extends ChangeNotifier {
   // Flag to track if filters have been loaded from preferences
   bool _filtersLoaded = false;
 
+  // Total count of questions with valid metadata
+  int _totalQuestionCount = 0;
+
+  // Count of questions after applying filters
+  int _filteredQuestionCount = 0;
+
+  // Additional filtering metadata
+  Set<String> _liveQuestionIds = <String>{};
+  QuestionType _currentQuestionType = QuestionType.both;
+  bool _excludeActiveQuestions = false;
+
   /// Get current active filters
   Set<String> get activeFilters => Set.unmodifiable(_activeFilters);
 
@@ -38,6 +50,17 @@ class FilterProvider extends ChangeNotifier {
   /// Get count of active filters
   int get activeFilterCount => _activeFilters.length;
 
+  /// Get total count of questions with valid metadata
+  int get totalQuestionCount => _totalQuestionCount;
+
+  /// Get count of questions after applying filters
+  int get filteredQuestionCount => _filteredQuestionCount;
+
+  /// Get the appropriate question count based on filter state
+  /// Returns filtered count when filters are active, otherwise total count
+  int get displayedQuestionCount =>
+      hasActiveFilters ? _filteredQuestionCount : _totalQuestionCount;
+
   /// Initialize the provider and load persisted filters
   Future<void> initialize() async {
     if (!_filtersLoaded) {
@@ -50,6 +73,40 @@ class FilterProvider extends ChangeNotifier {
   void setQuestions(List<QuestionIdentifier> questions) {
     _originalQuestions = List.from(questions);
     _applyFilters();
+    notifyListeners(); // Notify listeners so UI updates immediately
+  }
+
+  /// Set questions with additional filtering metadata for subject type and exclude active
+  void setQuestionsWithMetadata(
+    List<QuestionIdentifier> questions,
+    Set<String> liveQuestionIds,
+    QuestionType questionType,
+    bool excludeActiveQuestions,
+  ) {
+    _originalQuestions = List.from(questions);
+    _liveQuestionIds = Set.from(liveQuestionIds);
+    _currentQuestionType = questionType;
+    _excludeActiveQuestions = excludeActiveQuestions;
+    _applyFilters();
+    notifyListeners(); // Notify listeners so UI updates immediately
+  }
+
+  /// Update subject type filter and reapply filters
+  void updateQuestionType(QuestionType questionType) {
+    if (_currentQuestionType != questionType) {
+      _currentQuestionType = questionType;
+      _applyFilters();
+      notifyListeners();
+    }
+  }
+
+  /// Update exclude active questions filter and reapply filters
+  void updateExcludeActiveQuestions(bool excludeActive) {
+    if (_excludeActiveQuestions != excludeActive) {
+      _excludeActiveQuestions = excludeActive;
+      _applyFilters();
+      notifyListeners();
+    }
   }
 
   /// Add a filter category
@@ -103,8 +160,15 @@ class FilterProvider extends ChangeNotifier {
   bool get hasNoResults =>
       _filteredQuestions.isEmpty && _originalQuestions.isNotEmpty;
 
-  /// Get the number of filtered questions
-  int get filteredQuestionCount => _filteredQuestions.length;
+  /// Format question count text based on filter state
+  /// Returns "X of Y questions" when filters are active, otherwise "X questions"
+  String getQuestionCountText() {
+    if (hasActiveFilters) {
+      return '$_filteredQuestionCount of $_totalQuestionCount questions';
+    } else {
+      return '$_totalQuestionCount questions';
+    }
+  }
 
   /// Get available filter categories based on question metadata
   /// Returns categories that have at least one question with matching metadata
@@ -159,15 +223,43 @@ class FilterProvider extends ChangeNotifier {
   }
 
   /// Apply current filters to the question list using OR logic
+  /// Updates both filtered and total question counts
   void _applyFilters() {
-    if (_activeFilters.isEmpty) {
-      // No filters active, show all questions with metadata
-      _filteredQuestions = _originalQuestions.where((question) {
-        return question.metadata?.primaryClassCode != null;
+    // Start with all questions and apply subject type filter first
+    List<QuestionIdentifier> workingSet = _originalQuestions;
+
+    // Apply subject type filter
+    if (_currentQuestionType != QuestionType.both) {
+      workingSet = workingSet.where((question) {
+        if (_currentQuestionType == QuestionType.english) {
+          return question.subjectType == QuestionType.english;
+        } else if (_currentQuestionType == QuestionType.math) {
+          return question.subjectType == QuestionType.math;
+        }
+        return true; // Should not reach here given the condition above
       }).toList();
+    }
+
+    // Apply exclude active questions filter
+    if (_excludeActiveQuestions) {
+      workingSet = workingSet.where((question) {
+        return !_liveQuestionIds.contains(question.id);
+      }).toList();
+    }
+
+    // Calculate total questions with valid metadata (after subject and exclusion filters)
+    final questionsWithMetadata = workingSet.where((question) {
+      return question.metadata?.primaryClassCode != null;
+    }).toList();
+
+    _totalQuestionCount = questionsWithMetadata.length;
+
+    if (_activeFilters.isEmpty) {
+      // No category filters active, show all questions with metadata
+      _filteredQuestions = questionsWithMetadata;
     } else {
       // Apply OR logic: question matches if it belongs to ANY active filter category
-      _filteredQuestions = _originalQuestions.where((question) {
+      _filteredQuestions = workingSet.where((question) {
         if (question.metadata?.primaryClassCode == null) {
           return false; // Exclude questions without metadata
         }
@@ -178,6 +270,17 @@ class FilterProvider extends ChangeNotifier {
         return _activeFilters.contains(questionCategory);
       }).toList();
     }
+
+    // Update filtered count
+    _filteredQuestionCount = _filteredQuestions.length;
+  }
+
+  /// Manually update question counts
+  /// Useful when question data changes externally
+  void updateQuestionCounts(int total, int filtered) {
+    _totalQuestionCount = total;
+    _filteredQuestionCount = filtered;
+    notifyListeners();
   }
 
   /// Load filters from SharedPreferences

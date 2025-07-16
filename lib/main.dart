@@ -4,7 +4,9 @@ import 'providers/quiz_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/filter_provider.dart';
 import 'screens/quiz_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/share_service.dart';
+import 'services/text_sharing_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,6 +30,7 @@ class MyApp extends StatelessWidget {
           },
         ),
         Provider(create: (context) => ShareService()),
+        Provider(create: (context) => TextSharingService()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settingsProvider, child) {
@@ -63,7 +66,13 @@ class MyApp extends StatelessWidget {
             darkTheme: settingsProvider.isOledMode ? oledDarkTheme : darkTheme,
             themeMode: settingsProvider.themeMode,
             debugShowCheckedModeBanner: false,
-            home: const QuizScreen(),
+            routes: {
+              '/quiz': (context) => const QuizScreen(),
+              '/onboarding': (context) => const OnboardingScreen(),
+            },
+            home: settingsProvider.onboardingCompleted
+                ? const QuizScreen()
+                : const OnboardingScreen(),
           );
         },
       ),

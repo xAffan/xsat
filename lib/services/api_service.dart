@@ -7,6 +7,7 @@ import '../models/question.dart';
 import '../models/question_identifier.dart';
 import '../models/question_live_list.dart';
 import '../models/question_metadata.dart';
+import '../providers/settings_provider.dart'; // For QuestionType enum
 import '../utils/logger.dart';
 import '../utils/exceptions.dart';
 
@@ -125,7 +126,8 @@ class ApiService {
 
           for (final jsonItem in data) {
             try {
-              final identifier = createQuestionIdentifierWithMetadata(jsonItem);
+              final identifier =
+                  createQuestionIdentifierWithMetadata(jsonItem, test);
               if (identifier != null) {
                 identifiers.add(identifier);
                 processedCount++;
@@ -205,7 +207,7 @@ class ApiService {
   /// Creates a QuestionIdentifier with metadata from API response JSON.
   /// Returns null for invalid data that should be filtered out.
   QuestionIdentifier? createQuestionIdentifierWithMetadata(
-      Map<String, dynamic> json) {
+      Map<String, dynamic> json, int test) {
     try {
       // Validate input
       if (json.isEmpty) {
@@ -252,6 +254,7 @@ class ApiService {
         id: id,
         type: type,
         metadata: metadata,
+        subjectType: test == 1 ? QuestionType.english : QuestionType.math,
       );
     } catch (e, stackTrace) {
       // Log the error and return null to filter out this entry

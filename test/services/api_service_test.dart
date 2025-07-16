@@ -23,7 +23,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert
         expect(result, isNotNull);
@@ -49,7 +49,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert
         expect(result, isNotNull);
@@ -77,7 +77,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 2);
 
         // Assert
         expect(result, isNotNull);
@@ -102,7 +102,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert
         expect(result, isNotNull);
@@ -119,7 +119,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert
         expect(result, isNull);
@@ -135,7 +135,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert
         expect(result, isNotNull);
@@ -240,8 +240,8 @@ void main() {
 
         // Act & Assert - Should not throw
         expect(
-            () =>
-                apiService.createQuestionIdentifierWithMetadata(malformedJson),
+            () => apiService.createQuestionIdentifierWithMetadata(
+                malformedJson, 1),
             returnsNormally);
       });
 
@@ -253,7 +253,7 @@ void main() {
         };
 
         // Act
-        final result = apiService.createQuestionIdentifierWithMetadata(json);
+        final result = apiService.createQuestionIdentifierWithMetadata(json, 1);
 
         // Assert - Should still create identifier even if metadata fails
         expect(result, isNotNull);

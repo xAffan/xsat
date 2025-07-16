@@ -76,7 +76,7 @@ class FilterChipBar extends StatelessWidget {
                 right: 16.0,
               ),
               itemCount: availableFilters.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8.0),
+              separatorBuilder: (context, index) => _buildSeparator(index),
               itemBuilder: (context, index) {
                 final filter = availableFilters[index];
                 final isActive = activeFilters.contains(filter);
@@ -160,5 +160,38 @@ class FilterChipBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Builds appropriate separator based on filter position and type
+  Widget _buildSeparator(int index) {
+    // Import CategoryMappingService to check subject types
+    if (index >= availableFilters.length - 1) {
+      return const SizedBox(width: 8.0);
+    }
+
+    final currentFilter = availableFilters[index];
+    final nextFilter = availableFilters[index + 1];
+
+    // Try to determine if we're crossing between subject types
+    final currentIsEnglish = _isEnglishCategory(currentFilter);
+    final nextIsEnglish = _isEnglishCategory(nextFilter);
+
+    // If we're crossing between English and Math categories, add extra spacing
+    if (currentIsEnglish != nextIsEnglish) {
+      return const SizedBox(width: 20.0); // Extra spacing between subjects
+    }
+
+    return const SizedBox(width: 8.0); // Normal spacing
+  }
+
+  /// Helper method to determine if a category is English-related
+  bool _isEnglishCategory(String category) {
+    const englishCategories = [
+      'Information and Ideas',
+      'Craft and Structure',
+      'Expression of Ideas',
+      'Standard English Conventions',
+    ];
+    return englishCategories.contains(category);
   }
 }

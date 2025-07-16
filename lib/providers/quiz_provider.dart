@@ -34,48 +34,28 @@ class QuizProvider with ChangeNotifier {
       _state = QuizState.loading;
       notifyListeners();
 
-      List<QuestionIdentifier> allIdentifiers = [];
+      // Always fetch BOTH English and Math questions
       final englishParams = {"test": 1, "domain": "INI,CAS,EOI,SEC"};
       final mathParams = {"test": 2, "domain": "H,P,Q,S"};
 
-      switch (questionType) {
-        case QuestionType.english:
-          allIdentifiers = await _apiService.getAllQuestionIdentifiers(
-              test: englishParams['test'] as int,
-              domain: englishParams['domain'] as String);
-          break;
-        case QuestionType.math:
-          allIdentifiers = await _apiService.getAllQuestionIdentifiers(
-              test: mathParams['test'] as int,
-              domain: mathParams['domain'] as String);
-          break;
-        case QuestionType.both:
-          final results = await Future.wait([
-            _apiService.getAllQuestionIdentifiers(
-                test: englishParams['test'] as int,
-                domain: englishParams['domain'] as String),
-            _apiService.getAllQuestionIdentifiers(
-                test: mathParams['test'] as int,
-                domain: mathParams['domain'] as String)
-          ]);
-          allIdentifiers = results.expand((list) => list).toList();
-          break;
-      }
+      final results = await Future.wait([
+        _apiService.getAllQuestionIdentifiers(
+            test: englishParams['test'] as int,
+            domain: englishParams['domain'] as String),
+        _apiService.getAllQuestionIdentifiers(
+            test: mathParams['test'] as int,
+            domain: mathParams['domain'] as String)
+      ]);
 
-      // Exclude active questions if setting is enabled
-      if (settingsProvider != null && settingsProvider.excludeActiveQuestions) {
-        final liveList = await _apiService.getLiveQuestionIdentifiers();
-        final liveIds = [
-          ...liveList.mathIds,
-          ...liveList.englishIds,
-        ].map((q) => q.id).toSet();
-        allIdentifiers =
-            allIdentifiers.where((id) => !liveIds.contains(id.id)).toList();
+      List<QuestionIdentifier> allIdentifiers =
+          results.expand((list) => list).toList();
 
-        // Exclude questions with type 'ibn'
-        allIdentifiers =
-            allIdentifiers.where((id) => id.type != IdType.ibn).toList();
-      }
+      // Pre-fetch excluded questions list (always, regardless of setting)
+      final liveList = await _apiService.getLiveQuestionIdentifiers();
+      final liveIds = [
+        ...liveList.mathIds,
+        ...liveList.englishIds,
+      ].map((q) => q.id).toSet();
 
       final seenIds = await _cacheService.getSeenQuestionIds();
       // Filter the identifier list based on seen string IDs
@@ -86,7 +66,12 @@ class QuizProvider with ChangeNotifier {
       // Initialize FilterProvider and set questions
       if (filterProvider != null) {
         await filterProvider.initialize();
-        filterProvider.setQuestions(unseenQuestions);
+        // Set questions with additional metadata for filtering
+        filterProvider.setQuestionsWithMetadata(
+            unseenQuestions,
+            liveIds,
+            settingsProvider?.questionType ?? QuestionType.both,
+            settingsProvider?.excludeActiveQuestions ?? false);
         _questionPool = List.from(filterProvider.filteredQuestions);
       } else {
         _questionPool = unseenQuestions;
@@ -197,5 +182,43 @@ class QuizProvider with ChangeNotifier {
       _errorMessage = "Failed to refresh question pool.";
       notifyListeners();
     }
+  }
+
+  /// Updates the question pool based on current filter state
+  /// This allows instant filter changes without restarting the quiz
+  void updateQuestionPool(FilterProvider filterProvider) {
+    if (_state == QuizState.uninitialized || _state == QuizState.loading) {
+      return; // Can't update pool if not initialized
+    }
+
+    final newQuestionPool = filterProvider.filteredQuestions;
+
+    // Check if the current question is still in the pool
+    final currentQuestionInPool = _currentQuestion != null &&
+        newQuestionPool.any((q) => q.id == _currentQuestion!.externalId);
+
+    if (!currentQuestionInPool && _currentQuestion != null) {
+      // Current question is no longer in the pool, need to load a new one
+      _questionPool = List.from(newQuestionPool);
+      if (_questionPool.isNotEmpty) {
+        _questionPool.shuffle(Random());
+        _loadNextQuestion();
+      } else {
+        _state = QuizState.complete;
+        _errorMessage = "No questions match the selected filters.";
+        _currentQuestion = null;
+      }
+    } else {
+      // Current question is still valid, just update the pool
+      _questionPool = List.from(newQuestionPool);
+      if (_questionPool.isEmpty) {
+        _state = QuizState.complete;
+        _errorMessage = "No questions match the selected filters.";
+      } else {
+        _questionPool.shuffle(Random());
+      }
+    }
+
+    notifyListeners();
   }
 }
