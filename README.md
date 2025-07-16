@@ -102,6 +102,12 @@ A comprehensive SAT practice quiz application built with Flutter, designed to he
 - iOS 12.0 or higher
 - Xcode 12 or higher for development
 
+#### Windows
+- Windows 10 or higher
+
+#### macOS
+- macOS 10.14 or higher
+
 #### Web
 - Modern web browsers with JavaScript enabled
 - Responsive design for desktop and mobile browsers
@@ -235,6 +241,16 @@ flutter build appbundle --release
 flutter build ios --release
 ```
 
+### Windows Deployment
+```bash
+flutter build windows --release
+```
+
+### macOS Deployment
+```bash
+flutter build macos --release
+```
+
 ### Web Deployment
 ```bash
 flutter build web --release
@@ -249,8 +265,3 @@ This project is licensed under the GNU V3 License - see the LICENSE file for det
 For support, bug reports, or feature requests:
 - Open an issue on GitHub
 - Contact me: affanquddus1122@gmail.com
-
-## Acknowledgments
-
-- Flutter team for the excellent framework
-- Material Design team for design guidelines
