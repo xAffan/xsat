@@ -100,34 +100,47 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
 
-      # This command creates the .xcarchive file needed for the next step.
-      - name: Build Xcode archive
+      # This command will always create the .xcarchive, and MIGHT create the .ipa.
+      - name: Build and Attempt to Export IPA
         run: flutter build ipa --release --no-codesign
 
-      # This step explicitly exports the .xcarchive to a .ipa file using our new ExportOptions.
-      - name: Export IPA
+      - name: Create or Rename IPA
         run: |
-          ARCHIVE_PATH=$(find build/ios/archive -name "*.xcarchive" | head -1)
-          xcodebuild -exportArchive \
-            -archivePath "$ARCHIVE_PATH" \
-            -exportPath "build/ios/ipa" \
-            -exportOptionsPlist "ios/ExportOptions.plist"
+          # Define the final path for our IPA
+          FINAL_IPA_PATH="build/ios/ipa/${{ env.PROJECT_NAME }}-iOS.ipa"
 
-      - name: Rename IPA
-        run: |
-          IPA_PATH=$(find build/ios/ipa -name "*.ipa" -type f | head -1)
-          if [ -n "$IPA_PATH" ]; then
-            mv "$IPA_PATH" "${{ env.PROJECT_NAME }}-iOS.ipa"
+          # Check if 'flutter build ipa' already created the IPA in the expected directory
+          EXISTING_IPA_PATH=$(find build/ios/ipa -name "*.ipa" -type f | head -1)
+
+          if [ -n "$EXISTING_IPA_PATH" ]; then
+            # SUCCESS: The modern command worked. Just rename the file.
+            echo "✅ 'flutter build ipa' successfully created the IPA. Renaming..."
+            mv "$EXISTING_IPA_PATH" "$FINAL_IPA_PATH"
           else
-            echo "No .ipa file found. Export may have failed."
-            exit 1
+            # FALLBACK: The modern command failed to export. Manually create the IPA.
+            echo "⚠️ 'flutter build ipa' did not create an IPA. Falling back to manual creation..."
+            
+            # Find the archive created by the previous step
+            ARCHIVE_PATH=$(find build/ios/archive -name "*.xcarchive" | head -1)
+            
+            if [ -z "$ARCHIVE_PATH" ]; then
+              echo "❌ Critical error: No .xcarchive found to create an IPA from."
+              exit 1
+            fi
+
+            # Manually package the .app into an .ipa
+            PAYLOAD_DIR="build/ios/ipa/Payload"
+            mkdir -p "$PAYLOAD_DIR"
+            cp -r "$ARCHIVE_PATH/Products/Applications/Runner.app" "$PAYLOAD_DIR/"
+            (cd build/ios/ipa && zip -r "${{ env.PROJECT_NAME }}-iOS.ipa" Payload)
           fi
 
       - name: Upload iOS Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iOS-Build
-          path: ${{ env.PROJECT_NAME }}-iOS.ipa
+          # The path is now guaranteed to be correct regardless of which method was used
+          path: build/ios/ipa/${{ env.PROJECT_NAME }}-iOS.ipa
           if-no-files-found: warn
 
   create-and-publish-release:
