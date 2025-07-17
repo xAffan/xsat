@@ -1,3 +1,4 @@
+import 'package:sat_quiz/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -55,7 +56,13 @@ void main() {
         ),
       ];
 
-      filterProvider.setQuestions(testQuestions);
+      filterProvider.setQuestionsWithMetadata(
+        questions: testQuestions,
+        liveQuestionIds: {},
+        seenQuestionIds: {},
+        questionType: QuestionType.both,
+        excludeActiveQuestions: false,
+      );
     });
 
     testWidgets('should display total count when no filters are active',
@@ -71,7 +78,7 @@ void main() {
         ),
       );
 
-      expect(find.text('3 questions'), findsOneWidget);
+      expect(find.text('3 of 3 questions'), findsOneWidget);
     });
 
     testWidgets(
@@ -125,7 +132,7 @@ void main() {
       );
 
       // Initially shows total count
-      expect(find.text('3 questions'), findsOneWidget);
+      expect(find.text('3 of 3 questions'), findsOneWidget);
 
       // Add a filter
       await filterProvider.addFilter('Information and Ideas');
@@ -139,7 +146,7 @@ void main() {
       await tester.pump();
 
       // Back to showing total count
-      expect(find.text('3 questions'), findsOneWidget);
+      expect(find.text('3 of 3 questions'), findsOneWidget);
     });
 
     testWidgets('should show loading state when no question data is available',
@@ -181,7 +188,7 @@ void main() {
         ),
       );
 
-      final textWidget = tester.widget<Text>(find.text('3 questions'));
+      final textWidget = tester.widget<Text>(find.text('3 of 3 questions'));
       expect(textWidget.style?.fontSize, equals(18));
       expect(textWidget.style?.fontWeight, equals(FontWeight.bold));
       expect(textWidget.style?.color, equals(Colors.blue));

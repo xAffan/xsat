@@ -94,7 +94,7 @@ void main() {
 
       // Select a filter
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Verify filter is active
       expect(filterProvider.isFilterActive('Information and Ideas'), isTrue);
@@ -182,9 +182,9 @@ void main() {
 
       // Apply filters
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Algebra'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Verify filters are active
       expect(filterProvider.activeFilters.length, equals(2));
@@ -252,22 +252,22 @@ void main() {
 
       // Select first filter
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(filterProvider.filteredQuestionCount, equals(1));
 
       // Add second filter (OR logic should show both categories)
       await tester.tap(find.text('Standard English Conventions'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(filterProvider.filteredQuestionCount, equals(2));
 
       // Add third filter
       await tester.tap(find.text('Algebra'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(filterProvider.filteredQuestionCount, equals(3));
 
       // Remove one filter
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(filterProvider.filteredQuestionCount, equals(2));
     });
 
@@ -292,7 +292,7 @@ void main() {
 
       // Apply some filters
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(filterProvider.hasActiveFilters, isTrue);
 
@@ -401,11 +401,11 @@ void main() {
 
       // Test rapid filter changes
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Algebra'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Advanced Math'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Should complete without timeout
       expect(filterProvider.filteredQuestionCount, greaterThan(0));
@@ -478,7 +478,7 @@ void main() {
 
       // Student selects Information and Ideas filter
       await tester.tap(find.text('Information and Ideas'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Only matching questions are available
       expect(filterProvider.filteredQuestionCount, equals(1));
@@ -522,7 +522,7 @@ void main() {
 
       // Student selects Algebra filter
       await tester.tap(find.text('Algebra'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Only algebra questions are available
       expect(filterProvider.filteredQuestionCount, equals(1));
@@ -590,7 +590,7 @@ void main() {
 
       // Student applies filter that matches no questions
       await tester.tap(find.text('Algebra'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Student should see no results
       expect(filterProvider.hasNoResults, isTrue);

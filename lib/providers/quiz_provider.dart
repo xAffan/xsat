@@ -57,7 +57,7 @@ class QuizProvider with ChangeNotifier {
         ...liveList.englishIds,
       ].map((q) => q.id).toSet();
 
-      final seenIds = await _cacheService.getSeenQuestionIds();
+      final seenIds = (await _cacheService.getSeenQuestionIds()).toSet();
       // Filter the identifier list based on seen string IDs
       final unseenQuestions = allIdentifiers
           .where((identifier) => !seenIds.contains(identifier.id))
@@ -68,10 +68,13 @@ class QuizProvider with ChangeNotifier {
         await filterProvider.initialize();
         // Set questions with additional metadata for filtering
         filterProvider.setQuestionsWithMetadata(
-            unseenQuestions,
-            liveIds,
-            settingsProvider?.questionType ?? QuestionType.both,
-            settingsProvider?.excludeActiveQuestions ?? false);
+            questions: allIdentifiers,
+            liveQuestionIds: liveIds,
+            seenQuestionIds: seenIds,
+            questionType:
+                settingsProvider?.questionType ?? QuestionType.both,
+            excludeActiveQuestions:
+                settingsProvider?.excludeActiveQuestions ?? false);
         _questionPool = List.from(filterProvider.filteredQuestions);
       } else {
         _questionPool = unseenQuestions;

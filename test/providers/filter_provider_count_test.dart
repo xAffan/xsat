@@ -1,3 +1,4 @@
+import 'package:sat_quiz/providers/settings_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sat_quiz/providers/filter_provider.dart';
 import 'package:sat_quiz/models/question_identifier.dart';
@@ -69,7 +70,13 @@ void main() {
         ),
       ];
 
-      filterProvider.setQuestions(testQuestions);
+      filterProvider.setQuestionsWithMetadata(
+        questions: testQuestions,
+        liveQuestionIds: {},
+        seenQuestionIds: {},
+        questionType: QuestionType.both,
+        excludeActiveQuestions: false,
+      );
     });
 
     group('Question Count Tracking', () {
@@ -121,7 +128,7 @@ void main() {
     group('Question Count Display', () {
       test('should format question count text correctly', () async {
         // No filters
-        expect(filterProvider.getQuestionCountText(), equals('4 questions'));
+        expect(filterProvider.getQuestionCountText(), equals('4 of 4 questions'));
 
         // With filters
         await filterProvider.addFilter('Information and Ideas');
@@ -135,7 +142,7 @@ void main() {
 
         // Clear filters
         await filterProvider.clearFilters();
-        expect(filterProvider.getQuestionCountText(), equals('4 questions'));
+        expect(filterProvider.getQuestionCountText(), equals('4 of 4 questions'));
       });
 
       test('should update counts when manually called', () async {
@@ -155,7 +162,7 @@ void main() {
 
         // Update counts again after clearing filters
         filterProvider.updateQuestionCounts(10, 10);
-        expect(filterProvider.getQuestionCountText(), equals('10 questions'));
+        expect(filterProvider.getQuestionCountText(), equals('10 of 10 questions'));
       });
 
       test('should update counts automatically when filters change', () async {

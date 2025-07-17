@@ -30,6 +30,7 @@ class FilterProvider extends ChangeNotifier {
 
   // Additional filtering metadata
   Set<String> _liveQuestionIds = <String>{};
+  Set<String> _seenQuestionIds = <String>{};
   QuestionType _currentQuestionType = QuestionType.both;
   bool _excludeActiveQuestions = false;
 
@@ -77,14 +78,16 @@ class FilterProvider extends ChangeNotifier {
   }
 
   /// Set questions with additional filtering metadata for subject type and exclude active
-  void setQuestionsWithMetadata(
-    List<QuestionIdentifier> questions,
-    Set<String> liveQuestionIds,
-    QuestionType questionType,
-    bool excludeActiveQuestions,
-  ) {
+  void setQuestionsWithMetadata({
+    required List<QuestionIdentifier> questions,
+    required Set<String> liveQuestionIds,
+    required Set<String> seenQuestionIds,
+    required QuestionType questionType,
+    required bool excludeActiveQuestions,
+  }) {
     _originalQuestions = List.from(questions);
     _liveQuestionIds = Set.from(liveQuestionIds);
+    _seenQuestionIds = Set.from(seenQuestionIds);
     _currentQuestionType = questionType;
     _excludeActiveQuestions = excludeActiveQuestions;
     _applyFilters();
@@ -166,7 +169,7 @@ class FilterProvider extends ChangeNotifier {
     if (hasActiveFilters) {
       return '$_filteredQuestionCount of $_totalQuestionCount questions';
     } else {
-      return '$_totalQuestionCount questions';
+      return '$_filteredQuestionCount of $_totalQuestionCount questions';
     }
   }
 
@@ -174,8 +177,9 @@ class FilterProvider extends ChangeNotifier {
   /// Returns categories that have at least one question with matching metadata
   List<String> getAvailableFilterCategories() {
     final availableCategories = <String>{};
+    final questionsToConsider = _getQuestionsForCountCalculation();
 
-    for (final question in _originalQuestions) {
+    for (final question in questionsToConsider) {
       if (question.metadata?.primaryClassCode != null) {
         final userFriendlyCategory =
             CategoryMappingService.getUserFriendlyCategory(
@@ -205,8 +209,9 @@ class FilterProvider extends ChangeNotifier {
   /// Get count of questions for each available category
   Map<String, int> getCategoryQuestionCounts() {
     final counts = <String, int>{};
+    final questionsToCount = _getQuestionsForCountCalculation();
 
-    for (final question in _originalQuestions) {
+    for (final question in questionsToCount) {
       if (question.metadata?.primaryClassCode != null) {
         final userFriendlyCategory =
             CategoryMappingService.getUserFriendlyCategory(
@@ -220,6 +225,26 @@ class FilterProvider extends ChangeNotifier {
     }
 
     return counts;
+  }
+
+  List<QuestionIdentifier> _getQuestionsForCountCalculation() {
+    List<QuestionIdentifier> questions = _originalQuestions;
+
+    // Apply subject type filter
+    if (_currentQuestionType != QuestionType.both) {
+      questions = questions.where((q) {
+        return q.subjectType == _currentQuestionType;
+      }).toList();
+    }
+
+    // Apply live question filter
+    if (_excludeActiveQuestions) {
+      questions = questions.where((q) {
+        return !_liveQuestionIds.contains(q.id);
+      }).toList();
+    }
+
+    return questions;
   }
 
   /// Apply current filters to the question list using OR logic
@@ -254,24 +279,21 @@ class FilterProvider extends ChangeNotifier {
 
     _totalQuestionCount = questionsWithMetadata.length;
 
+    List<QuestionIdentifier> matchedQuestions;
     if (_activeFilters.isEmpty) {
-      // No category filters active, show all questions with metadata
-      _filteredQuestions = questionsWithMetadata;
+      // No category filters active, all questions with metadata are considered matched
+      matchedQuestions = questionsWithMetadata;
     } else {
       // Apply OR logic: question matches if it belongs to ANY active filter category
-      _filteredQuestions = workingSet.where((question) {
-        if (question.metadata?.primaryClassCode == null) {
-          return false; // Exclude questions without metadata
-        }
-
+      matchedQuestions = questionsWithMetadata.where((question) {
         final questionCategory = CategoryMappingService.getUserFriendlyCategory(
             question.metadata!.primaryClassCode);
-
         return _activeFilters.contains(questionCategory);
       }).toList();
     }
 
-    // Update filtered count
+    // Update filtered questions and count
+    _filteredQuestions = matchedQuestions;
     _filteredQuestionCount = _filteredQuestions.length;
   }
 
