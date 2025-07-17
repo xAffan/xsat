@@ -48,6 +48,7 @@ class RationaleView extends StatelessWidget {
           // Wrap the scroll view in Flexible, NOT Expanded.
           Flexible(
             child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               child: Html(
                 data: HtmlProcessor.process(rationale),
                 extensions: const [

@@ -296,12 +296,16 @@ class _QuizScreenState extends State<QuizScreen> {
         }
       } else if (question.type == 'spr') {
         // For short response, compare text
-        final isCorrect = question.correctKey.trim().toLowerCase() ==
-            selectedAnswer?.toString().trim().toLowerCase();
-        if (isCorrect) {
-          _soundService.playCorrectSound();
-        } else {
-          _soundService.playWrongSound();
+        bool isCorrect = false;
+        // Only check correctness if correctKey is not empty/null
+        if (question.correctKey.trim().isNotEmpty) {
+          isCorrect = question.correctKey.trim().toLowerCase() ==
+              (selectedAnswer?.toString().trim().toLowerCase() ?? '');
+          if (isCorrect) {
+            _soundService.playCorrectSound();
+          } else {
+            _soundService.playWrongSound();
+          }
         }
       }
     }

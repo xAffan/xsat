@@ -167,10 +167,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             subtitle: subtitle,
             icon: icon,
             isSelected: _selectedTheme == theme,
-            onTap: () {
+            onTap: () async {
               setState(() {
                 _selectedTheme = theme;
               });
+              // Update theme instantly
+              final settingsProvider = context.read<SettingsProvider>();
+              await settingsProvider.updateThemePreference(theme);
             },
           );
         }).toList(),

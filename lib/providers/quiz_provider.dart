@@ -110,7 +110,7 @@ class QuizProvider with ChangeNotifier {
     notifyListeners(); // Notify UI that we are loading the next question
 
     try {
-      final nextIdentifier = _questionPool.removeLast();
+      final nextIdentifier = _selectNextQuestionBalanced();
       _currentQuestion = await _apiService.getQuestionDetails(nextIdentifier);
       _state = QuizState.ready;
     } catch (e) {
@@ -119,6 +119,53 @@ class QuizProvider with ChangeNotifier {
     } finally {
       notifyListeners();
     }
+  }
+
+  /// Selects the next question with balanced English/Math distribution when content type is 'both'
+  QuestionIdentifier _selectNextQuestionBalanced() {
+    if (_questionPool.isEmpty) {
+      throw StateError('Question pool is empty');
+    }
+
+    // If only one question left, return it
+    if (_questionPool.length == 1) {
+      return _questionPool.removeLast();
+    }
+
+    // Separate English and Math questions
+    final englishQuestions = _questionPool
+        .where((q) => q.subjectType == QuestionType.english)
+        .toList();
+    final mathQuestions =
+        _questionPool.where((q) => q.subjectType == QuestionType.math).toList();
+
+    // If we only have one type of question, select from available pool
+    if (englishQuestions.isEmpty && mathQuestions.isNotEmpty) {
+      final selected = mathQuestions[Random().nextInt(mathQuestions.length)];
+      _questionPool.remove(selected);
+      return selected;
+    }
+
+    if (mathQuestions.isEmpty && englishQuestions.isNotEmpty) {
+      final selected =
+          englishQuestions[Random().nextInt(englishQuestions.length)];
+      _questionPool.remove(selected);
+      return selected;
+    }
+
+    // If we have both types, implement 50/50 logic
+    if (englishQuestions.isNotEmpty && mathQuestions.isNotEmpty) {
+      // Simple 50/50 random selection
+      final useEnglish = Random().nextBool();
+
+      final selectedPool = useEnglish ? englishQuestions : mathQuestions;
+      final selected = selectedPool[Random().nextInt(selectedPool.length)];
+      _questionPool.remove(selected);
+      return selected;
+    }
+
+    // Fallback: just remove the last question (shouldn't reach here)
+    return _questionPool.removeLast();
   }
 
   void nextQuestion() {
