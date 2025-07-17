@@ -76,23 +76,32 @@ class HtmlProcessor {
     }
   }
 
-  static void _fixFigures(dom.Document document) {
-    // Remove <figure> elements without affecting their children
-    final figures = document.querySelectorAll('figure');
-    for (final figure in figures) {
-      if (figure.children.isEmpty) {
-        figure.remove();
-      } else {
-        // If it has children, just remove the <figure> tag but keep the children
-        final parent = figure.parent;
-        if (parent != null) {
-          for (final child in figure.children) {
-            parent.insertBefore(child, figure);
-          }
-          figure.remove();
-        }
-      }
+static void _fixFigures(dom.Document document) {
+  // Remove nested <figure> elements, keeping only the outermost one
+  final figures = document.querySelectorAll('figure');
+  
+  for (final figure in figures) {
+    _removeNestedFigures(figure);
+  }
+}
+
+static void _removeNestedFigures(dom.Element figure) {
+  // Find all direct child figures
+  final childFigures = figure.children.where((child) => child.localName == 'figure').toList();
+  
+  for (final childFigure in childFigures) {
+    // Recursively remove nested figures from the child first
+    _removeNestedFigures(childFigure);
+    
+    // Move all children of the nested figure to the parent figure
+    final childrenToMove = childFigure.children.toList();
+    for (final child in childrenToMove) {
+      figure.insertBefore(child, childFigure);
     }
+    
+    // Remove the nested figure element
+    childFigure.remove();
+  }
   }
 
   /// This fixes the styles of stuff inside tables
