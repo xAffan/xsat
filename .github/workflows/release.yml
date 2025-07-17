@@ -99,38 +99,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
-      - run: flutter build ipa --release --no-codesign
-      - name: Create IPA from archive
+
+      # This command creates the .xcarchive file needed for the next step.
+      - name: Build Xcode archive
+        run: flutter build ipa --release --no-codesign
+
+      # This step explicitly exports the .xcarchive to a .ipa file using our new ExportOptions.
+      - name: Export IPA
         run: |
-          mkdir -p build/ios/ipa
           ARCHIVE_PATH=$(find build/ios/archive -name "*.xcarchive" | head -1)
-          if [ -n "$ARCHIVE_PATH" ]; then
-            APP_NAME=$(basename "$ARCHIVE_PATH" .xcarchive)
-            # Use xcodebuild if available, otherwise fallback to manual zip
-            xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "build/ios/ipa" -exportOptionsPlist "ios/ExportOptions.plist" || \
-            (
-              echo "xcodebuild export failed. Falling back to manual zipping."
-              cd "build/ios/archive/$APP_NAME.xcarchive/Products/Applications/"
-              mkdir -p ../../../../../ipa/Payload
-              cp -r *.app ../../../../../ipa/Payload/
-              cd ../../../../../ipa
-              zip -r "$APP_NAME.ipa" Payload/
-              rm -rf Payload
-            )
-          else
-            echo "No xcarchive found"
-            ls -la build/ios/archive/
-            exit 1
-          fi
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "build/ios/ipa" \
+            -exportOptionsPlist "ios/ExportOptions.plist"
+
       - name: Rename IPA
         run: |
           IPA_PATH=$(find build/ios/ipa -name "*.ipa" -type f | head -1)
           if [ -n "$IPA_PATH" ]; then
             mv "$IPA_PATH" "${{ env.PROJECT_NAME }}-iOS.ipa"
           else
-            echo "No .ipa file found to rename."
+            echo "No .ipa file found. Export may have failed."
             exit 1
           fi
+
       - name: Upload iOS Build Artifact
         uses: actions/upload-artifact@v4
         with:
