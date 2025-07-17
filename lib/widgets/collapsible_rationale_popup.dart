@@ -235,7 +235,10 @@ class _CollapsibleRationalePopupState extends State<CollapsibleRationalePopup>
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Html(
-          data: HtmlProcessor.process(widget.rationale),
+          data: HtmlProcessor.process(
+            widget.rationale,
+            darkMode: Theme.of(context).brightness == Brightness.dark,
+          ),
           extensions: const [
             MathHtmlExtension(),
             SvgHtmlExtension(),

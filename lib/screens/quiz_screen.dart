@@ -551,8 +551,14 @@ class _QuizScreenState extends State<QuizScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Html(
-                              data: HtmlProcessor.process(question.stimulus) +
-                                  HtmlProcessor.process(question.stem),
+                              data: HtmlProcessor.process(
+                                        question.stimulus,
+                                        darkMode: Theme.of(context).brightness == Brightness.dark,
+                                      ) +
+                                  HtmlProcessor.process(
+                                        question.stem,
+                                        darkMode: Theme.of(context).brightness == Brightness.dark,
+                                      ),
                               extensions: const [
                                 MathHtmlExtension(),
                                 SvgHtmlExtension(),

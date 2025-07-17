@@ -50,7 +50,10 @@ class RationaleView extends StatelessWidget {
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
               child: Html(
-                data: HtmlProcessor.process(rationale),
+                data: HtmlProcessor.process(
+                  rationale,
+                  darkMode: Theme.of(context).brightness == Brightness.dark,
+                ),
                 extensions: const [
                   MathHtmlExtension(),
                   SvgHtmlExtension(),

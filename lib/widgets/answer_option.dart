@@ -70,25 +70,16 @@ class AnswerOptionTile extends StatelessWidget {
           ],
         ),
         child: Html(
-          data: HtmlProcessor.process(optionContent),
+          data: HtmlProcessor.process(
+            optionContent,
+            darkMode: Theme.of(context).brightness == Brightness.dark,
+          ),
           extensions: const [
             MathHtmlExtension(),
             SvgHtmlExtension(),
             TableHtmlExtension(),
           ],
           style: HtmlStyles.get(context),
-          /*
-          style: {
-            // CRITICAL: Set the text color to contrast with the background
-            "body": Style(
-              margin: Margins.zero,
-              display: Display.inline,
-              // Use onSurface color, which is designed to be readable on 'surface' colors like cardColor
-              color: colorScheme.onSurface,
-              // Optional: match the font size to the app's theme
-              fontSize: FontSize(theme.textTheme.bodyMedium?.fontSize ?? 14),
-            ),
-          },*/
         ),
       ),
     );

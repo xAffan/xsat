@@ -24,7 +24,7 @@ class HtmlProcessor {
   };
 
   /// Pre-processes an HTML string with a "smart helper" approach using proper HTML parsing.
-  static String process(String html) {
+  static String process(String html, {bool darkMode = false}) {
     // Parse the HTML document
     final document = html_parser.parse(html);
 
@@ -47,10 +47,11 @@ class HtmlProcessor {
     _removeScreenReaderElements(document);
 
     // --- Step 6: Style images for better visibility in dark mode ---
-    _styleImages(document);
-
-    // --- Step 7 (NEW): Invert colors for SVGs for visibility in dark mode ---
-    _styleSvgElements(document);
+    if (darkMode) {
+      _styleImages(document);
+      // --- Step 7 (NEW): Invert colors for SVGs for visibility in dark mode ---
+      _styleSvgElements(document);
+    }
 
     // --- Step 8: Remove problematic attributes only
     _fixStyles(document);

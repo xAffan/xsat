@@ -93,10 +93,17 @@ class QuestionCountWidget extends StatelessWidget {
           }
 
           final seenIds = snapshot.data ?? <String>{};
+          // Only count seen questions that are present in the current question set
+          final currentQuestionIds = filterProvider.hasActiveFilters
+              ? filterProvider.filteredQuestions.map((q) => q.id).toSet()
+              : filterProvider.originalQuestions.map((q) => q.id).toSet();
+          final solvedCount = seenIds.intersection(currentQuestionIds).length;
           final totalAvailable = filterProvider.filteredQuestionCount > 0
               ? filterProvider.filteredQuestionCount
               : filterProvider.totalQuestionCount;
-          final currentQuestionNumber = seenIds.length + 1;
+          // Cap solvedCount to totalAvailable
+          final cappedSolved = solvedCount.clamp(0, totalAvailable);
+          final currentQuestionNumber = cappedSolved + 1;
 
           return Text(
             'Question $currentQuestionNumber of $totalAvailable',
