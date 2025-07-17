@@ -47,6 +47,9 @@ class _QuizScreenState extends State<QuizScreen> {
   // Scroll controller for ensuring MCQ options are visible
   final ScrollController _scrollController = ScrollController();
 
+  // Map to store GlobalKeys for each answer option, allowing programmatic scrolling
+  final Map<String, GlobalKey> _answerOptionKeys = {};
+
   @override
   void initState() {
     super.initState();
@@ -161,17 +164,14 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Shows the rationale popup when answer is submitted
   void _showRationalePopup() {
-    // Add a small delay to ensure layout is complete before showing popup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _isRationaleVisible = true;
-        });
+    if (mounted) {
+      setState(() {
+        _isRationaleVisible = true;
+      });
 
-        // Scroll to ensure MCQ options are visible when rationale appears
-        _scrollToShowAnswerOptions();
-      }
-    });
+      // Scroll to ensure MCQ options are visible when rationale appears
+      _scrollToShowAnswerOptions();
+    }
   }
 
   /// Resets popup state when navigating to next question
@@ -181,20 +181,33 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  /// Scrolls to ensure answer options are visible when rationale popup appears
+  /// Scrolls to ensure the selected answer option is visible when rationale popup appears
   void _scrollToShowAnswerOptions() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Add a small delay to ensure the rationale popup has fully rendered and expanded
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (_scrollController.hasClients && mounted) {
-        try {
-          // Scroll to show the answer area when rationale popup appears
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent * 0.7,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        } catch (e) {
-          // Silently handle scroll errors during layout transitions
-          debugPrint('Scroll error handled: $e');
+        final quizProvider = context.read<QuizProvider>();
+        final selectedAnswerId = quizProvider.selectedAnswerId;
+
+        if (selectedAnswerId != null && _answerOptionKeys.containsKey(selectedAnswerId)) {
+          final selectedKey = _answerOptionKeys[selectedAnswerId]!;
+          final RenderBox? renderBox = selectedKey.currentContext?.findRenderObject() as RenderBox?;
+
+          if (renderBox != null) {
+            final position = renderBox.localToGlobal(Offset.zero, ancestor: context.findRenderObject());
+            final scrollOffset = _scrollController.position.pixels;
+            final viewportHeight = _scrollController.position.viewportDimension;
+
+            // Calculate the target scroll position to bring the selected answer into view
+            // Adjust this value as needed to position the selected answer appropriately
+            final targetOffset = position.dy + scrollOffset - (viewportHeight / 2); // Center the selected answer
+
+            _scrollController.animateTo(
+              targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
         }
       }
     });
@@ -505,14 +518,19 @@ class _QuizScreenState extends State<QuizScreen> {
       // Multiple Choice Question: show answer options as before
       answerSection = Column(
         children: [
-          ...question.answerOptions.map((option) => AnswerOptionTile(
-                optionId: option.id,
-                optionContent: option.content,
-                currentState: provider.state,
-                selectedOptionId: provider.selectedAnswerId,
-                correctOptionId: question.correctKey,
-                onSelect: () => provider.selectAnswer(option.id),
-              )),
+          ...question.answerOptions.map((option) {
+            // Ensure a unique key for each option
+            _answerOptionKeys[option.id] = GlobalKey();
+            return AnswerOptionTile(
+              key: _answerOptionKeys[option.id],
+              optionId: option.id,
+              optionContent: option.content,
+              currentState: provider.state,
+              selectedOptionId: provider.selectedAnswerId,
+              correctOptionId: question.correctKey,
+              onSelect: () => provider.selectAnswer(option.id),
+            );
+          }),
         ],
       );
     } else if (question.type == 'spr') {
