@@ -1,22 +1,15 @@
 # .github/workflows/release.yml
-
 name: Auto Release on Push
 
-# This workflow runs on every push to the 'main' branch
 on:
   push:
     branches:
       - main
 
-# Environment variables to use in the workflow
 env:
-  PROJECT_NAME: my_cool_app # TODO: Change this to your project's name
+  PROJECT_NAME: xsat
 
 jobs:
-  #---------------------------------------------------#
-  #                 PLATFORM BUILDS                   #
-  # All build jobs run in parallel to save time.      #
-  #---------------------------------------------------#
   build-android:
     name: Build Android
     runs-on: ubuntu-latest
@@ -26,7 +19,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '11'
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -43,7 +36,12 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgstreamer-plugins-good1.0-dev libgstreamer-plugins-bad1.0-dev
       - uses: subosito/flutter-action@v2
       - run: flutter build linux --release
       - run: tar -czvf ${{ env.PROJECT_NAME }}-Linux.tar.gz -C build/linux/x64/release/bundle .
@@ -76,7 +74,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
       - run: flutter build macos --release
-      - run: hdiutil create -fs HFS+ -srcfolder build/macos/Build/Products/Release/${{ env.PROJECT_NAME }}.app -volname "${{ env.PROJECT_NAME }}" ${{ env.PROJECT_NAME }}-macOS.dmg
+      - name: Create DMG
+        run: |
+          if [ -d "build/macos/Build/Products/Release/${{ env.PROJECT_NAME }}.app" ]; then
+            hdiutil create -fs HFS+ -srcfolder "build/macos/Build/Products/Release/${{ env.PROJECT_NAME }}.app" -volname "${{ env.PROJECT_NAME }}" "${{ env.PROJECT_NAME }}-macOS.dmg"
+          else
+            echo "App bundle not found at expected location"
+            ls -la build/macos/Build/Products/Release/
+            exit 1
+          fi
       - name: Upload macOS Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -96,18 +102,12 @@ jobs:
         with:
           name: iOS-Build
           path: build/ios/ipa/*.ipa
+          if-no-files-found: warn
 
-  #---------------------------------------------------#
-  #             CREATE & PUBLISH RELEASE              #
-  # This job runs after all builds, gathers the       #
-  # artifacts, and creates a single release.          #
-  #---------------------------------------------------#
   create-and-publish-release:
     name: Create & Publish Release
     runs-on: ubuntu-latest
-    # This job depends on all the build jobs completing
     needs: [build-android, build-linux, build-windows, build-macos, build-ios]
-    # This ensures the job runs even if some build jobs failed
     if: success() || failure()
     steps:
       - name: Generate Release Tag
@@ -117,7 +117,6 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          # Destination path for all downloaded artifacts
           path: artifacts
 
       - name: List downloaded files for debugging
@@ -126,12 +125,10 @@ jobs:
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          # This creates a new release using the generated tag
           tag_name: ${{ env.TAG }}
           name: "Auto Release ${{ env.TAG }}"
           body: |
             Automatic release generated from commit ${{ github.sha }}.
             
             **Note:** Some build files may be missing if their corresponding build job failed.
-          # This uploads all files from all subdirectories inside 'artifacts'
           files: artifacts/**/*
