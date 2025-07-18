@@ -42,7 +42,7 @@ class Question {
     // If correctKey is still empty, try to extract it from the rationale
     if (correctKey.isEmpty) {
       final rationale = json['rationale']?.toString() ?? '';
-      final regex = RegExp(r"The correct answer is ([^\.]+)\. ");
+      final regex = RegExp(r"The correct answer is ((?:(?!\.\s).)+)\.\s");
       final match = regex.firstMatch(rationale);
       if (match != null) {
         correctKey = match.group(1)?.trim() ?? '';

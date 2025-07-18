@@ -77,56 +77,59 @@ class HtmlProcessor {
   }
 
 static void _fixFigures(dom.Document document) {
-  // Remove nested <figure> elements, keeping only the outermost one
-  final figures = document.querySelectorAll('figure');
-  
-  for (final figure in figures) {
-    _removeNestedFigures(figure);
-  }
-}
-
-static void _removeNestedFigures(dom.Element figure) {
-  // Find all direct child figures
-  final childFigures = figure.children.where((child) => child.localName == 'figure').toList();
-  
-  for (final childFigure in childFigures) {
-    // Recursively remove nested figures from the child first
-    _removeNestedFigures(childFigure);
-    
-    // Move all children of the nested figure to the parent figure
-    final childrenToMove = childFigure.children.toList();
-    for (final child in childrenToMove) {
-      figure.insertBefore(child, childFigure);
-    }
-    
-    // Remove the nested figure element
-    childFigure.remove();
-  }
-  }
-
-  /// This fixes the styles of stuff inside tables
-  static void _fixStyles(dom.Document document) {
-    final allElements = document.querySelectorAll('*');
-    for (final element in allElements) {
-      // Remove width and height from style attribute if present
-      if (element.attributes.containsKey('style')) {
-        var style = element.attributes['style']!;
-        // Remove width and height CSS properties using regex
-        style = style.replaceAll(
-            RegExp(r'width\s*:\s*[^;]+;?', caseSensitive: false), '');
-        style = style.replaceAll(
-            RegExp(r'height\s*:\s*[^;]+;?', caseSensitive: false), '');
-        // Clean up any leftover semicolons or whitespace
-        style = style.replaceAll(RegExp(r';{2,}'), ';').trim();
-        if (style.endsWith(';')) style = style.substring(0, style.length - 1);
-        if (style.trim().isEmpty) {
-          element.attributes.remove('style');
-        } else {
-          element.attributes['style'] = style;
+    // Remove <figure> elements without affecting their children
+    final figures = document.querySelectorAll('figure');
+    for (final figure in figures) {
+      if (figure.children.isEmpty) {
+        figure.remove();
+      } else {
+        // If it has children, just remove the <figure> tag but keep the children
+        final parent = figure.parent;
+        if (parent != null) {
+          for (final child in figure.children) {
+            parent.insertBefore(child, figure);
+          }
+          figure.remove();
         }
       }
     }
   }
+
+static void _fixStyles(dom.Document document) {
+  // Start processing from the root element, skipping if null
+  if (document.documentElement != null) {
+    _processElement(document.documentElement!);
+  }
+}
+
+// Helper function for recursive traversal
+static void _processElement(dom.Element element) {
+  // Skip this element and its entire subtree if it's SVG
+  if (element.namespaceUri == 'http://www.w3.org/2000/svg') {
+    return;
+  }
+
+  // Process the current element's style (original logic)
+  if (element.attributes.containsKey('style')) {
+    var style = element.attributes['style']!;
+    style = style.replaceAll(
+        RegExp(r'width\s*:\s*[^;]+;?', caseSensitive: false), '');
+    style = style.replaceAll(
+        RegExp(r'height\s*:\s*[^;]+;?', caseSensitive: false), '');
+    style = style.replaceAll(RegExp(r';{2,}'), ';').trim();
+    if (style.endsWith(';')) style = style.substring(0, style.length - 1);
+    if (style.trim().isEmpty) {
+      element.attributes.remove('style');
+    } else {
+      element.attributes['style'] = style;
+    }
+  }
+
+  // Recursively process child elements (skips SVG children automatically)
+  for (var child in element.children) {
+    _processElement(child);
+  }
+}
 
   static void _fixNestedTables(dom.Document document) {
     // Find all tables that are nested inside other tables

@@ -51,7 +51,7 @@ class AnswerOptionTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.symmetric(vertical: 5.0),
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0.0),
         decoration: BoxDecoration(
           // Use a theme-aware background color like cardColor or surface
           color: theme.cardColor,
