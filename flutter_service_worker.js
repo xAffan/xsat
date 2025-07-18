@@ -9,9 +9,9 @@ const RESOURCES = {"assets/AssetManifest.bin": "ec30db6bb58e1e3108d40276251d4ae1
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/FontManifest.json": "71a4a82de411f155107da3f8dac64ebd",
 "assets/AssetManifest.json": "bd34f12c9e90c9335cf66a3f79d28d0b",
-"assets/fonts/MaterialIcons-Regular.otf": "88d46fed224ae11b0416ea8bf3b03ea7",
+"assets/fonts/MaterialIcons-Regular.otf": "17fef3daf39ba25bace5da07b5047313",
 "assets/AssetManifest.bin.json": "cfffc488d93a9cbd8958eb8e22176ed0",
-"assets/NOTICES": "d42127cb305dfd992b05f22ed20a0ba0",
+"assets/NOTICES": "657f5436d1d6a19a0e6477f53ff74660",
 "assets/packages/flutter_math_fork/lib/katex_fonts/fonts/KaTeX_Caligraphic-Regular.ttf": "7ec92adfa4fe03eb8e9bfb60813df1fa",
 "assets/packages/flutter_math_fork/lib/katex_fonts/fonts/KaTeX_Main-Regular.ttf": "5a5766c715ee765aa1398997643f1589",
 "assets/packages/flutter_math_fork/lib/katex_fonts/fonts/KaTeX_Size2-Regular.ttf": "959972785387fe35f7d47dbfb0385bc4",
@@ -35,7 +35,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "ec30db6bb58e1e3108d40276251d4ae1
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "33b7d9392238c04c131b6ce224e13711",
 "version.json": "2006ba8fab1df052dd979878d2238a37",
 "manifest.json": "182217ee5126d4953497d23a595a0d39",
-"flutter_bootstrap.js": "7570ebebc38dae903724743e1c285322",
+"flutter_bootstrap.js": "1cf03225acaab0af36d37e36d853e6d7",
 "canvaskit/skwasm.wasm": "39dd80367a4e71582d234948adc521c0",
 "canvaskit/canvaskit.wasm": "7a3f4ae7d65fc1de6a6e7ddd3224bc93",
 "canvaskit/skwasm.js.symbols": "e72c79950c8a8483d826a7f0560573a1",
@@ -53,7 +53,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "ec30db6bb58e1e3108d40276251d4ae1
 "icons/Icon-192.png": "62669d5bc084be93513ff158e82bae71",
 "icons/Icon-maskable-512.png": "62669d5bc084be93513ff158e82bae71",
 "icons/Icon-maskable-192.png": "62669d5bc084be93513ff158e82bae71",
-"main.dart.js": "e9a270cb6fa129f39a591e23ec22d8ea"};
+"main.dart.js": "052ac7cde1d69e0a049a6b3624405ced"};
 // The application shell files that are downloaded before a service worker can
 // start.
 const CORE = ["main.dart.js",
