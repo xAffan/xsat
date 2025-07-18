@@ -35,10 +35,19 @@ class Question {
     }
 
     // Safely access the 'keys' list to find the correct answer.
-    final keysList = json['keys'] as List?;
-    final correctKey = (keysList != null && keysList.isNotEmpty)
-        ? keysList[0]?.toString() ?? '' // Ensure the key is a non-null string
+    String correctKey = (json['keys'] as List?)?.isNotEmpty == true
+        ? json['keys'][0]?.toString() ?? ''
         : '';
+
+    // If correctKey is still empty, try to extract it from the rationale
+    if (correctKey.isEmpty) {
+      final rationale = json['rationale']?.toString() ?? '';
+      final regex = RegExp(r"The correct answer is ([^\.]+)\. ");
+      final match = regex.firstMatch(rationale);
+      if (match != null) {
+        correctKey = match.group(1)?.trim() ?? '';
+      }
+    }
 
     // Create metadata if available in JSON
     QuestionMetadata? metadata;
