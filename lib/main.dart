@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'providers/quiz_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/filter_provider.dart';
 import 'screens/quiz_screen.dart';
 import 'screens/onboarding_screen.dart';
+
+import 'screens/mistake_history_screen.dart';
 import 'services/share_service.dart';
 import 'services/text_sharing_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
   runApp(const MyApp());
 }
 
@@ -69,6 +74,7 @@ class MyApp extends StatelessWidget {
             routes: {
               '/quiz': (context) => const QuizScreen(),
               '/onboarding': (context) => const OnboardingScreen(),
+              '/mistakes': (context) => const MistakeHistoryScreen(),
             },
             home: settingsProvider.onboardingCompleted
                 ? const QuizScreen()

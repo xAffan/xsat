@@ -349,16 +349,26 @@ class _QuizScreenState extends State<QuizScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('SAT Question Bank Quiz', style: GoogleFonts.poppins()),
-            // Always show question count
             Consumer<FilterProvider>(
               builder: (context, filterProvider, child) {
-                return QuestionCountWidget(
-                  showProgress: true, // Show Question X of Y format
-                  textStyle: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                );
+                // Only show progress if caching is enabled
+                if (settingsProvider.isCachingEnabled) {
+                  return QuestionCountWidget(
+                    showProgress: true,
+                    textStyle: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  );
+                } else {
+                  return QuestionCountWidget(
+                    showProgress: false,
+                    textStyle: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  );
+                }
               },
             ),
           ],
@@ -370,14 +380,12 @@ class _QuizScreenState extends State<QuizScreen> {
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share Question',
             onPressed: () {
-              // Call the share method only when a question is ready to be shared
               if (quizProvider.state == QuizState.ready ||
                   quizProvider.state == QuizState.answered) {
                 _shareQuestion();
               }
             },
           ),
-          // Question info button - only show if question has metadata
           if ((quizProvider.state == QuizState.ready ||
                   quizProvider.state == QuizState.answered) &&
               quizProvider.currentQuestion?.metadata != null)
@@ -385,6 +393,15 @@ class _QuizScreenState extends State<QuizScreen> {
               icon: const Icon(Icons.help_outline),
               tooltip: 'Question Information',
               onPressed: () => _showQuestionInfo(),
+            ),
+          // Hide mistake history if caching is disabled
+          if (settingsProvider.isCachingEnabled)
+            IconButton(
+              icon: const Icon(Icons.history),
+              tooltip: 'Mistake History',
+              onPressed: () {
+                Navigator.pushNamed(context, '/mistakes');
+              },
             ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
