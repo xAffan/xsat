@@ -14,7 +14,7 @@ class ContentRenderer {
   /// suitable for text-based sharing while preserving mathematical meaning.
   static String renderMathContent(String mathExpression) {
     try {
-      Logger.info(
+      AppLogger.info(
           'Rendering math content: ${mathExpression.substring(0, mathExpression.length > 50 ? 50 : mathExpression.length)}...',
           tag: _logTag);
 
@@ -58,7 +58,7 @@ class ContentRenderer {
       // Return as-is if no special math formatting detected
       return mathExpression;
     } catch (e) {
-      Logger.error('Error rendering math content: $e', tag: _logTag);
+      AppLogger.error('Error rendering math content: $e', tag: _logTag);
       return '[Math Expression: ${mathExpression.length > 100 ? '${mathExpression.substring(0, 100)}...' : mathExpression}]';
     }
   }
@@ -69,7 +69,7 @@ class ContentRenderer {
   /// the table structure using ASCII formatting.
   static String renderTableContent(Map<String, dynamic> tableData) {
     try {
-      Logger.info('Rendering table content', tag: _logTag);
+      AppLogger.info('Rendering table content', tag: _logTag);
 
       // Handle HTML table string
       if (tableData.containsKey('html')) {
@@ -91,7 +91,7 @@ class ContentRenderer {
 
       return '[Table: ${tableData.toString()}]';
     } catch (e) {
-      Logger.error('Error rendering table content: $e', tag: _logTag);
+      AppLogger.error('Error rendering table content: $e', tag: _logTag);
       return '[Table: Unable to render]';
     }
   }
@@ -102,7 +102,7 @@ class ContentRenderer {
   /// or converts it to a format suitable for sharing.
   static String renderSvgContent(String svgData) {
     try {
-      Logger.info('Rendering SVG content', tag: _logTag);
+      AppLogger.info('Rendering SVG content', tag: _logTag);
 
       // Extract title or description from SVG if available
       final document = html_parser.parse(svgData);
@@ -132,7 +132,7 @@ class ContentRenderer {
 
       return '[SVG Image]';
     } catch (e) {
-      Logger.error('Error rendering SVG content: $e', tag: _logTag);
+      AppLogger.error('Error rendering SVG content: $e', tag: _logTag);
       return '[SVG: Unable to render]';
     }
   }
@@ -143,7 +143,7 @@ class ContentRenderer {
   /// according to its type, combining them into a cohesive text format.
   static String renderMixedContent(List<ContentBlock> blocks) {
     try {
-      Logger.info('Rendering mixed content with ${blocks.length} blocks',
+      AppLogger.info('Rendering mixed content with ${blocks.length} blocks',
           tag: _logTag);
 
       final buffer = StringBuffer();
@@ -182,7 +182,7 @@ class ContentRenderer {
 
       return buffer.toString();
     } catch (e) {
-      Logger.error('Error rendering mixed content: $e', tag: _logTag);
+      AppLogger.error('Error rendering mixed content: $e', tag: _logTag);
       return blocks.map((block) => block.render()).join('\n\n');
     }
   }

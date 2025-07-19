@@ -1,80 +1,72 @@
-import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart' as log;
 
 /// Centralized logging utility for the application
 /// Provides different log levels and handles production vs debug logging
-class Logger {
-  static const String _appName = 'SAT_Quiz';
+class AppLogger {
+  static final AppLogger _instance = AppLogger._internal();
+  late final log.Logger _logger;
+  late final String _platform;
 
-  /// Log an informational message
+  factory AppLogger() => _instance;
+
+  AppLogger._internal() {
+    _platform = _getPlatform();
+    final log.LogFilter filter = kDebugMode ? log.DevelopmentFilter() : ProductionFilter();
+    final log.PrettyPrinter printer = log.PrettyPrinter(
+      methodCount: 2,
+      errorMethodCount: 8,
+      lineLength: 120,
+      colors: true,
+      printEmojis: true,
+      printTime: true,
+    );
+    _logger = log.Logger(printer: printer, filter: filter);
+  }
+
   static void info(String message, {String? tag, Object? error}) {
-    _log('INFO', message, tag: tag, error: error);
+    _instance._logger.i(_instance._format(message, tag), error: error);
   }
 
-  /// Log a warning message
   static void warning(String message, {String? tag, Object? error}) {
-    _log('WARNING', message, tag: tag, error: error);
+    _instance._logger.w(_instance._format(message, tag), error: error);
   }
 
-  /// Log an error message
-  static void error(String message,
-      {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log('ERROR', message, tag: tag, error: error, stackTrace: stackTrace);
+  static void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+    _instance._logger.e(_instance._format(message, tag), error: error, stackTrace: stackTrace);
   }
 
-  /// Log a debug message (only in debug mode)
   static void debug(String message, {String? tag, Object? error}) {
     if (kDebugMode) {
-      _log('DEBUG', message, tag: tag, error: error);
+      _instance._logger.d(_instance._format(message, tag), error: error);
     }
   }
 
-  /// Internal logging method
-  static void _log(
-    String level,
-    String message, {
-    String? tag,
-    Object? error,
-    StackTrace? stackTrace,
-  }) {
-    final tagPrefix = tag != null ? '[$tag] ' : '';
-    final logMessage = '[$_appName] $tagPrefix$message';
-
-    if (kDebugMode) {
-      // In debug mode, use developer.log for better debugging experience
-      developer.log(
-        logMessage,
-        name: _appName,
-        level: _getLevelValue(level),
-        error: error,
-        stackTrace: stackTrace,
-      );
-    } else {
-      // In production, use print for basic logging
-      // In a real app, you might want to use a more sophisticated logging service
-      print('$level: $logMessage');
-      if (error != null) {
-        print('Error: $error');
-      }
-      if (stackTrace != null) {
-        print('StackTrace: $stackTrace');
-      }
-    }
+  String _format(String message, String? tag) {
+    return tag != null ? '[$_platform][$tag] $message' : '[$_platform] $message';
   }
 
-  /// Convert log level string to numeric value for developer.log
-  static int _getLevelValue(String level) {
-    switch (level) {
-      case 'DEBUG':
-        return 500;
-      case 'INFO':
-        return 800;
-      case 'WARNING':
-        return 900;
-      case 'ERROR':
-        return 1000;
-      default:
-        return 800;
+  String _getPlatform() {
+    if (kIsWeb) return 'Web';
+    try {
+      if (Platform.isAndroid) return 'Android';
+      if (Platform.isIOS) return 'iOS';
+      if (Platform.isMacOS) return 'macOS';
+      if (Platform.isWindows) return 'Windows';
+      if (Platform.isLinux) return 'Linux';
+      if (Platform.isFuchsia) return 'Fuchsia';
+    } catch (_) {
+      // Platform not available (e.g., web)
     }
+    return 'Unknown';
+  }
+}
+
+class ProductionFilter extends log.LogFilter {
+  @override
+  bool shouldLog(log.LogEvent event) {
+    // Only log warnings and errors in release mode
+    return event.level.index >= log.Level.warning.index;
   }
 }

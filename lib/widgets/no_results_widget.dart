@@ -6,9 +6,6 @@ class NoResultsWidget extends StatelessWidget {
   /// Callback to clear all active filters
   final VoidCallback? onClearFilters;
 
-  /// Callback to restart the quiz
-  final VoidCallback? onRestart;
-
   /// Whether filters are currently active
   final bool hasActiveFilters;
 
@@ -18,17 +15,20 @@ class NoResultsWidget extends StatelessWidget {
   /// Whether to show the clear filters button
   final bool showClearFilters;
 
-  /// Whether to show the restart button
-  final bool showRestart;
+
 
   const NoResultsWidget({
+
     super.key,
+
     this.onClearFilters,
-    this.onRestart,
+
     this.hasActiveFilters = false,
+
     this.customMessage,
+
     this.showClearFilters = true,
-    this.showRestart = true,
+
   });
 
   @override
@@ -107,25 +107,6 @@ class NoResultsWidget extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
-
-                // Restart button
-                if (showRestart && onRestart != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onRestart,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Restart Quiz'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colorScheme.primary,
-                        side: BorderSide(color: colorScheme.primary),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0,
-                          vertical: 12.0,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
 
@@ -152,7 +133,7 @@ class NoResultsWidget extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Try removing some filters to see more questions, or restart the quiz to load new content.',
+                        'Try removing some filters to see more questions.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
@@ -172,7 +153,7 @@ class NoResultsWidget extends StatelessWidget {
     if (hasActiveFilters) {
       return 'No questions match the selected filters. Try adjusting your filter selection or clearing all filters to see more questions.';
     } else {
-      return 'No questions are currently available. Please try restarting the quiz or check your connection.';
+      return 'No questions are currently available. Please check your connection.';
     }
   }
 }

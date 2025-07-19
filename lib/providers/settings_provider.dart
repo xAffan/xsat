@@ -16,7 +16,6 @@ class SettingsProvider with ChangeNotifier {
   bool _isOledMode = false; // New
   bool _excludeActiveQuestions = false; // New
   bool _onboardingCompleted = false; // New
-  bool settingsHaveChanged = false; // Flag for settings that truly need restart
 
   // Getters
   bool get isCachingEnabled => _isCachingEnabled;
@@ -25,7 +24,6 @@ class SettingsProvider with ChangeNotifier {
   bool get isOledMode => _isOledMode; // New
   bool get excludeActiveQuestions => _excludeActiveQuestions; // New
   bool get onboardingCompleted => _onboardingCompleted; // New
-  bool get hasSettingsChanged => settingsHaveChanged; // New
 
   // Sounds are always enabled - no setting needed
   bool get soundEnabled => true;
@@ -60,7 +58,6 @@ class SettingsProvider with ChangeNotifier {
   Future<void> toggleCaching(bool value) async {
     _isCachingEnabled = value;
     await _cacheService.setCachingEnabled(value);
-    // Caching changes don't require restart, they affect future behavior
     notifyListeners();
   }
 
@@ -68,7 +65,6 @@ class SettingsProvider with ChangeNotifier {
     if (_questionType == newType) return;
     _questionType = newType;
     await _cacheService.setQuestionType(newType);
-    // Question type changes apply instantly, no restart needed
     notifyListeners();
   }
 
@@ -103,11 +99,6 @@ class SettingsProvider with ChangeNotifier {
     await _cacheService.clearSeenQuestions();
     // Cache clearing doesn't need restart - just clears the seen questions list
     notifyListeners();
-  }
-
-  // Method to reset settings change flag
-  void appliedChanges() {
-    settingsHaveChanged = false;
   }
 }
 

@@ -69,7 +69,6 @@ void main() {
           body: NoResultsWidget(
             hasActiveFilters: filterProvider.hasActiveFilters,
             onClearFilters: () => filterProvider.clearFilters(),
-            onRestart: () {},
             customMessage: 'No questions match the selected filters.',
           ),
         ),
@@ -81,7 +80,6 @@ void main() {
           findsOneWidget);
       expect(find.byIcon(Icons.filter_list_off), findsOneWidget);
       expect(find.text('Clear All Filters'), findsOneWidget);
-      expect(find.text('Restart Quiz'), findsOneWidget);
     });
 
     testWidgets('should clear filters when Clear All Filters button is tapped',
@@ -95,7 +93,6 @@ void main() {
           body: NoResultsWidget(
             hasActiveFilters: filterProvider.hasActiveFilters,
             onClearFilters: () => filterProvider.clearFilters(),
-            onRestart: () {},
           ),
         ),
       ));
@@ -168,7 +165,6 @@ void main() {
           body: NoResultsWidget(
             hasActiveFilters: filterProvider.hasActiveFilters,
             onClearFilters: () => filterProvider.clearFilters(),
-            onRestart: () {},
           ),
         ),
       ));
@@ -176,7 +172,7 @@ void main() {
       // Should show help text for filtered scenario
       expect(
           find.text(
-              'Try removing some filters to see more questions, or restart the quiz to load new content.'),
+              'Try removing some filters to see more questions.'),
           findsOneWidget);
       expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
     });
@@ -188,7 +184,6 @@ void main() {
           body: NoResultsWidget(
             hasActiveFilters: false,
             onClearFilters: () {},
-            onRestart: () {},
           ),
         ),
       ));
@@ -196,7 +191,7 @@ void main() {
       // Should not show help text for non-filtered scenario
       expect(
           find.text(
-              'Try removing some filters to see more questions, or restart the quiz to load new content.'),
+              'Try removing some filters to see more questions.'),
           findsNothing);
       expect(find.byIcon(Icons.lightbulb_outline), findsNothing);
     });

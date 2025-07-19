@@ -14,11 +14,11 @@ import 'services/text_sharing_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  runApp(const MyApp());
+  runApp(const XSAT());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class XSAT extends StatelessWidget {
+  const XSAT({super.key});
 
   @override
   Widget build(BuildContext context) {

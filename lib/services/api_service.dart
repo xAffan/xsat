@@ -20,13 +20,13 @@ class ApiService {
   Future<QuestionLiveList> getLiveQuestionIdentifiers() async {
     try {
       final url = Uri.parse("$_qbankBaseUrl/lookup");
-      Logger.debug('Fetching live question identifiers from: $url',
+      AppLogger.debug('Fetching live question identifiers from: $url',
           tag: 'ApiService');
 
       final response = await http.get(url).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          Logger.error('Timeout while fetching live question identifiers',
+          AppLogger.error('Timeout while fetching live question identifiers',
               tag: 'ApiService');
           throw TimeoutException(
               'Request timeout', const Duration(seconds: 30));
@@ -38,7 +38,7 @@ class ApiService {
           final jsonData = json.decode(response.body);
           return QuestionLiveList.fromJson(jsonData);
         } catch (e, stackTrace) {
-          Logger.error(
+          AppLogger.error(
             'Failed to parse live question list JSON response',
             tag: 'ApiService',
             error: e,
@@ -47,7 +47,7 @@ class ApiService {
           throw FormatException('Invalid JSON response format: $e');
         }
       } else {
-        Logger.error(
+        AppLogger.error(
           'HTTP error ${response.statusCode} while fetching live question list',
           tag: 'ApiService',
         );
@@ -55,7 +55,7 @@ class ApiService {
             'HTTP ${response.statusCode}: Failed to load live question list');
       }
     } on SocketException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Network error while fetching live question identifiers',
         tag: 'ApiService',
         error: e,
@@ -63,7 +63,7 @@ class ApiService {
       );
       throw NetworkException('Network connection failed: ${e.message}');
     } on TimeoutException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Timeout while fetching live question identifiers',
         tag: 'ApiService',
         error: e,
@@ -71,7 +71,7 @@ class ApiService {
       );
       rethrow;
     } catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Unexpected error while fetching live question identifiers',
         tag: 'ApiService',
         error: e,
@@ -89,7 +89,7 @@ class ApiService {
       final url = Uri.parse("$_qbankBaseUrl/digital/get-questions");
       final requestBody = {"asmtEventId": 99, "test": test, "domain": domain};
 
-      Logger.debug(
+      AppLogger.debug(
         'Fetching question identifiers for test: $test, domain: $domain',
         tag: 'ApiService',
       );
@@ -103,7 +103,7 @@ class ApiService {
           .timeout(
         const Duration(seconds: 45),
         onTimeout: () {
-          Logger.error(
+          AppLogger.error(
             'Timeout while fetching question identifiers for test: $test',
             tag: 'ApiService',
           );
@@ -115,7 +115,7 @@ class ApiService {
       if (response.statusCode == 200) {
         try {
           final List<dynamic> data = json.decode(response.body);
-          Logger.debug(
+          AppLogger.debug(
             'Successfully fetched ${data.length} raw question entries',
             tag: 'ApiService',
           );
@@ -134,7 +134,7 @@ class ApiService {
               }
             } catch (e) {
               errorCount++;
-              Logger.warning(
+              AppLogger.warning(
                 'Failed to process question identifier: $e',
                 tag: 'ApiService',
                 error: e,
@@ -142,7 +142,7 @@ class ApiService {
             }
           }
 
-          Logger.info(
+          AppLogger.info(
             'Processed $processedCount question identifiers successfully, $errorCount errors',
             tag: 'ApiService',
           );
@@ -155,7 +155,7 @@ class ApiService {
 
           return identifiers;
         } catch (e, stackTrace) {
-          Logger.error(
+          AppLogger.error(
             'Failed to parse question identifiers JSON response',
             tag: 'ApiService',
             error: e,
@@ -165,7 +165,7 @@ class ApiService {
               originalError: e);
         }
       } else {
-        Logger.error(
+        AppLogger.error(
           'HTTP error ${response.statusCode} while fetching question identifiers for test: $test',
           tag: 'ApiService',
         );
@@ -175,7 +175,7 @@ class ApiService {
         );
       }
     } on SocketException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Network error while fetching question identifiers',
         tag: 'ApiService',
         error: e,
@@ -183,7 +183,7 @@ class ApiService {
       );
       throw NetworkException('Network connection failed: ${e.message}');
     } on TimeoutException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Timeout while fetching question identifiers',
         tag: 'ApiService',
         error: e,
@@ -194,7 +194,7 @@ class ApiService {
       if (e is AppException) {
         rethrow;
       }
-      Logger.error(
+      AppLogger.error(
         'Unexpected error while fetching question identifiers',
         tag: 'ApiService',
         error: e,
@@ -211,7 +211,7 @@ class ApiService {
     try {
       // Validate input
       if (json.isEmpty) {
-        Logger.warning(
+        AppLogger.warning(
             'Empty JSON object provided for question identifier creation',
             tag: 'ApiService');
         return null;
@@ -231,7 +231,7 @@ class ApiService {
 
       // Return null if no valid identifier found
       if (id == null || id.isEmpty || type == null) {
-        Logger.warning('No valid identifier found in JSON object',
+        AppLogger.warning('No valid identifier found in JSON object',
             tag: 'ApiService');
         return null;
       }
@@ -242,7 +242,7 @@ class ApiService {
         metadata = extractQuestionMetadata(json);
       } catch (e) {
         // Log the error but continue processing without metadata
-        Logger.warning(
+        AppLogger.warning(
           'Failed to extract metadata for question $id: $e',
           tag: 'ApiService',
           error: e,
@@ -258,7 +258,7 @@ class ApiService {
       );
     } catch (e, stackTrace) {
       // Log the error and return null to filter out this entry
-      Logger.error(
+      AppLogger.error(
         'Error processing question identifier: $e',
         tag: 'ApiService',
         error: e,
@@ -281,7 +281,7 @@ class ApiService {
 
       // Return null if no metadata fields are present
       if (!hasMetadata) {
-        Logger.debug('No metadata fields found in JSON object',
+        AppLogger.debug('No metadata fields found in JSON object',
             tag: 'ApiService');
         return null;
       }
@@ -295,7 +295,7 @@ class ApiService {
               json['primary_class_cd'].toString().isNotEmpty);
 
       if (!hasValidData) {
-        Logger.debug('Metadata fields present but all empty or null',
+        AppLogger.debug('Metadata fields present but all empty or null',
             tag: 'ApiService');
         return null;
       }
@@ -303,7 +303,7 @@ class ApiService {
       return QuestionMetadata.fromJson(json);
     } catch (e, stackTrace) {
       // Log the error and return null if metadata creation fails
-      Logger.error(
+      AppLogger.error(
         'Failed to create QuestionMetadata: $e',
         tag: 'ApiService',
         error: e,
@@ -316,7 +316,7 @@ class ApiService {
   /// Fetches the details for a single question using its identifier with comprehensive error handling.
   Future<Question> getQuestionDetails(QuestionIdentifier identifier) async {
     try {
-      Logger.debug(
+      AppLogger.debug(
         'Fetching question details for ${identifier.type.name}: ${identifier.id}',
         tag: 'ApiService',
       );
@@ -333,7 +333,7 @@ class ApiService {
 
       // Preserve metadata from identifier if the fetched question doesn't have metadata
       if (question.metadata == null && identifier.metadata != null) {
-        Logger.debug(
+        AppLogger.debug(
           'Preserving metadata from identifier for question: ${identifier.id}',
           tag: 'ApiService',
         );
@@ -351,7 +351,7 @@ class ApiService {
 
       return question;
     } catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Failed to fetch question details for ${identifier.type.name}: ${identifier.id}',
         tag: 'ApiService',
         error: e,
@@ -369,7 +369,7 @@ class ApiService {
         "external_ids": [externalId]
       };
 
-      Logger.debug('Fetching question by external_id: $externalId',
+      AppLogger.debug('Fetching question by external_id: $externalId',
           tag: 'ApiService');
 
       final response = await http
@@ -381,7 +381,7 @@ class ApiService {
           .timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          Logger.error(
+          AppLogger.error(
             'Timeout while fetching question details for external_id: $externalId',
             tag: 'ApiService',
           );
@@ -399,7 +399,7 @@ class ApiService {
 
           // Debug logging to see what fields are available
           final questionData = data.first as Map<String, dynamic>;
-          Logger.debug('Question JSON keys: ${questionData.keys.toList()}',
+          AppLogger.debug('Question JSON keys: ${questionData.keys.toList()}',
               tag: 'ApiService');
 
           // Check for metadata fields specifically
@@ -413,12 +413,12 @@ class ApiService {
           final availableMetadataFields = metadataFields
               .where((field) => questionData.containsKey(field))
               .toList();
-          Logger.debug('Available metadata fields: $availableMetadataFields',
+          AppLogger.debug('Available metadata fields: $availableMetadataFields',
               tag: 'ApiService');
 
           return Question.fromJson(questionData);
         } catch (e, stackTrace) {
-          Logger.error(
+          AppLogger.error(
             'Failed to parse question details JSON for external_id: $externalId',
             tag: 'ApiService',
             error: e,
@@ -428,7 +428,7 @@ class ApiService {
               originalError: e);
         }
       } else {
-        Logger.error(
+        AppLogger.error(
           'HTTP error ${response.statusCode} while fetching question details for external_id: $externalId',
           tag: 'ApiService',
         );
@@ -438,7 +438,7 @@ class ApiService {
         );
       }
     } on SocketException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Network error while fetching question details for external_id: $externalId',
         tag: 'ApiService',
         error: e,
@@ -446,7 +446,7 @@ class ApiService {
       );
       throw NetworkException('Network connection failed: ${e.message}');
     } on TimeoutException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Timeout while fetching question details for external_id: $externalId',
         tag: 'ApiService',
         error: e,
@@ -457,7 +457,7 @@ class ApiService {
       if (e is AppException) {
         rethrow;
       }
-      Logger.error(
+      AppLogger.error(
         'Unexpected error while fetching question details for external_id: $externalId',
         tag: 'ApiService',
         error: e,
@@ -471,12 +471,12 @@ class ApiService {
   Future<Question> _fetchByIbn(String ibn) async {
     try {
       final url = Uri.parse("$_saicBaseUrl/$ibn.json");
-      Logger.debug('Fetching question by ibn: $ibn', tag: 'ApiService');
+      AppLogger.debug('Fetching question by ibn: $ibn', tag: 'ApiService');
 
       final response = await http.get(url).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          Logger.error(
+          AppLogger.error(
             'Timeout while fetching question details for ibn: $ibn',
             tag: 'ApiService',
           );
@@ -494,7 +494,7 @@ class ApiService {
           final normalizedData = _transformIbnResponse(data.first);
           return Question.fromJson(normalizedData);
         } catch (e, stackTrace) {
-          Logger.error(
+          AppLogger.error(
             'Failed to parse question details JSON for ibn: $ibn',
             tag: 'ApiService',
             error: e,
@@ -504,7 +504,7 @@ class ApiService {
               originalError: e);
         }
       } else {
-        Logger.error(
+        AppLogger.error(
           'HTTP error ${response.statusCode} while fetching question details for ibn: $ibn',
           tag: 'ApiService',
         );
@@ -514,7 +514,7 @@ class ApiService {
         );
       }
     } on SocketException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Network error while fetching question details for ibn: $ibn',
         tag: 'ApiService',
         error: e,
@@ -522,7 +522,7 @@ class ApiService {
       );
       throw NetworkException('Network connection failed: ${e.message}');
     } on TimeoutException catch (e, stackTrace) {
-      Logger.error(
+      AppLogger.error(
         'Timeout while fetching question details for ibn: $ibn',
         tag: 'ApiService',
         error: e,
@@ -533,7 +533,7 @@ class ApiService {
       if (e is AppException) {
         rethrow;
       }
-      Logger.error(
+      AppLogger.error(
         'Unexpected error while fetching question details for ibn: $ibn',
         tag: 'ApiService',
         error: e,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -85,7 +84,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     // Initialize the quiz after the first frame is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeQuizBasedOnSettings();
-      _setupFilterListener();
     });
   }
 
@@ -104,6 +102,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     // Only refresh if quiz is initialized and not in error state
     if (quizProvider.state != QuizState.uninitialized &&
+        quizProvider.state != QuizState.loading &&
         quizProvider.state != QuizState.error) {
       quizProvider.refreshQuestionPool(filterProvider);
     }
@@ -131,73 +130,22 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     // Initialize filter provider if not already done
     filterProvider.initialize().then((_) {
       if (mounted) {
-        context.read<QuizProvider>().initializeQuiz(
+        context
+            .read<QuizProvider>()
+            .initializeQuiz(
               settingsProvider.questionType,
               settingsProvider: settingsProvider,
               filterProvider: filterProvider,
-            );
+            )
+            .then((_) {
+          if (mounted) {
+            _setupFilterListener();
+          }
+        });
         // Start question animation
         _questionAnimationController.forward();
       }
     });
-  }
-
-  /// Shows a modern dialog prompting the user to restart the quiz
-  void _showRestartDialog() {
-    final settingsProvider = context.read<SettingsProvider>();
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.refresh, color: Colors.orange),
-              ),
-              const SizedBox(width: 12),
-              const Text('Apply Settings'),
-            ],
-          ),
-          content: const Text(
-            'To apply the new content settings, the quiz needs to be restarted.',
-            style: TextStyle(fontSize: 16),
-          ),
-          actions: <Widget>[
-            TextButton(
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: const Text('Cancel'),
-              onPressed: () {
-                settingsProvider.appliedChanges();
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Restart Quiz'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _initializeQuizBasedOnSettings();
-                settingsProvider.appliedChanges();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   /// Helper to map difficulty codes to human-readable labels
@@ -365,15 +313,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final quizProvider = context.watch<QuizProvider>();
     final settingsProvider = context.watch<SettingsProvider>();
-
-    // Show restart dialog if needed
-    if (settingsProvider.hasSettingsChanged) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (ModalRoute.of(context)?.isCurrent == true) {
-          _showRestartDialog();
-        }
-      });
-    }
 
     // Start FAB animation when question is ready
     if (quizProvider.state == QuizState.ready && !_fabAnimationController.isCompleted) {
@@ -607,7 +546,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           return NoResultsWidget(
             hasActiveFilters: hasActiveFilters,
             onClearFilters: hasActiveFilters ? () => filterProvider.clearFilters() : null,
-            onRestart: _initializeQuizBasedOnSettings,
             customMessage: provider.errorMessage,
           );
         }
@@ -653,7 +591,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ElevatedButton.icon(
                   onPressed: _initializeQuizBasedOnSettings,
                   icon: const Icon(Icons.refresh),
-                  label: const Text("Start New Quiz"),
+                  label: const Text("Restart Quiz"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,

@@ -19,7 +19,7 @@ class TextSharingService {
     String? explanation,
   ) async {
     try {
-      Logger.info(
+      AppLogger.info(
           'Generating shareable text for question: ${question.externalId}',
           tag: _logTag);
 
@@ -49,7 +49,7 @@ class TextSharingService {
 
       return shareableContent.toShareableText();
     } catch (e) {
-      Logger.error('Error generating shareable text: $e', tag: _logTag);
+      AppLogger.error('Error generating shareable text: $e', tag: _logTag);
       rethrow;
     }
   }
@@ -60,7 +60,7 @@ class TextSharingService {
   /// such as mathematical expressions, tables, or SVG graphics.
   String formatQuestionContent(String content) {
     try {
-      Logger.info('Formatting question content', tag: _logTag);
+      AppLogger.info('Formatting question content', tag: _logTag);
 
       if (content.isEmpty) {
         return 'No question content available.';
@@ -85,7 +85,7 @@ class TextSharingService {
       // For regular HTML content, strip HTML tags and return clean text
       return _stripHtmlTags(content);
     } catch (e) {
-      Logger.error('Error formatting question content: $e', tag: _logTag);
+      AppLogger.error('Error formatting question content: $e', tag: _logTag);
       return content; // Return original content as fallback
     }
   }
@@ -96,7 +96,7 @@ class TextSharingService {
   /// for sharing, handling any complex content within the choices.
   List<String> formatAnswerChoices(List<String> choices) {
     try {
-      Logger.info('Formatting ${choices.length} answer choices', tag: _logTag);
+      AppLogger.info('Formatting ${choices.length} answer choices', tag: _logTag);
 
       return choices.map((choice) {
         // Handle mathematical content in choices
@@ -113,7 +113,7 @@ class TextSharingService {
         return _stripHtmlTags(choice);
       }).toList();
     } catch (e) {
-      Logger.error('Error formatting answer choices: $e', tag: _logTag);
+      AppLogger.error('Error formatting answer choices: $e', tag: _logTag);
       return choices; // Return original choices as fallback
     }
   }
@@ -124,7 +124,7 @@ class TextSharingService {
   /// any complex content appropriately for text-based sharing.
   String formatExplanation(String explanation) {
     try {
-      Logger.info('Formatting explanation content', tag: _logTag);
+      AppLogger.info('Formatting explanation content', tag: _logTag);
 
       if (explanation.isEmpty || explanation == 'No rationale provided.') {
         return 'No explanation available.';
@@ -149,7 +149,7 @@ class TextSharingService {
       // Strip HTML tags for regular content
       return _stripHtmlTags(explanation);
     } catch (e) {
-      Logger.error('Error formatting explanation: $e', tag: _logTag);
+      AppLogger.error('Error formatting explanation: $e', tag: _logTag);
       return explanation; // Return original explanation as fallback
     }
   }
@@ -160,22 +160,22 @@ class TextSharingService {
   /// content with appropriate fallback handling.
   Future<void> shareTextContent(String content, String title) async {
     try {
-      Logger.info('Sharing text content with title: $title', tag: _logTag);
+      AppLogger.info('Sharing text content with title: $title', tag: _logTag);
 
       // Use Share.share() with the correct API
       await Share.share(content);
 
-      Logger.info('Text content shared successfully', tag: _logTag);
+      AppLogger.info('Text content shared successfully', tag: _logTag);
     } catch (e) {
-      Logger.error('Error sharing text content: $e', tag: _logTag);
+      AppLogger.error('Error sharing text content: $e', tag: _logTag);
 
       // Fallback: copy to clipboard
       try {
         await Clipboard.setData(ClipboardData(text: content));
-        Logger.info('Content copied to clipboard as fallback', tag: _logTag);
+        AppLogger.info('Content copied to clipboard as fallback', tag: _logTag);
         throw ShareFallbackException('Content copied to clipboard');
       } catch (clipboardError) {
-        Logger.error('Failed to copy to clipboard: $clipboardError',
+        AppLogger.error('Failed to copy to clipboard: $clipboardError',
             tag: _logTag);
         throw Exception('Failed to share content: $e');
       }

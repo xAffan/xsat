@@ -19,7 +19,7 @@ void main() {
       expect(find.text('No Questions Found'), findsOneWidget);
       expect(
           find.text(
-              'No questions are currently available. Please try restarting the quiz or check your connection.'),
+              'No questions are currently available. Please check your connection.'),
           findsOneWidget);
       expect(find.byIcon(Icons.filter_list_off), findsOneWidget);
     });
@@ -102,48 +102,9 @@ void main() {
       expect(find.text('Clear All Filters'), findsNothing);
     });
 
-    testWidgets('shows restart button by default', (WidgetTester tester) async {
-      bool restartCalled = false;
+    
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: NoResultsWidget(
-              hasActiveFilters: false,
-              onRestart: () {
-                restartCalled = true;
-              },
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Restart Quiz'), findsOneWidget);
-      expect(find.byIcon(Icons.refresh), findsOneWidget);
-
-      // Test button functionality
-      await tester.tap(find.text('Restart Quiz'));
-      await tester.pump();
-
-      expect(restartCalled, isTrue);
-    });
-
-    testWidgets('hides restart button when showRestart is false',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: NoResultsWidget(
-              hasActiveFilters: false,
-              showRestart: false,
-              onRestart: () {},
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Restart Quiz'), findsNothing);
-    });
+    
 
     testWidgets('shows help text when filters are active',
         (WidgetTester tester) async {
@@ -159,7 +120,7 @@ void main() {
 
       expect(
           find.text(
-              'Try removing some filters to see more questions, or restart the quiz to load new content.'),
+              'Try removing some filters to see more questions.'),
           findsOneWidget);
       expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
     });
@@ -178,7 +139,7 @@ void main() {
 
       expect(
           find.text(
-              'Try removing some filters to see more questions, or restart the quiz to load new content.'),
+              'Try removing some filters to see more questions.'),
           findsNothing);
     });
 
@@ -208,7 +169,6 @@ void main() {
             body: NoResultsWidget(
               hasActiveFilters: true,
               onClearFilters: null,
-              onRestart: null,
             ),
           ),
         ),
@@ -216,7 +176,6 @@ void main() {
 
       // Should not show buttons when callbacks are null
       expect(find.text('Clear All Filters'), findsNothing);
-      expect(find.text('Restart Quiz'), findsNothing);
     });
 
     testWidgets('applies correct styling and layout',
@@ -228,7 +187,6 @@ void main() {
             body: NoResultsWidget(
               hasActiveFilters: true,
               onClearFilters: () {},
-              onRestart: () {},
             ),
           ),
         ),
@@ -237,17 +195,14 @@ void main() {
       // Verify text content
       expect(find.text('No Questions Found'), findsOneWidget);
       expect(find.text('Clear All Filters'), findsOneWidget);
-      expect(find.text('Restart Quiz'), findsOneWidget);
 
       // Verify icon presence
       expect(find.byIcon(Icons.filter_list_off), findsOneWidget);
       expect(find.byIcon(Icons.clear_all), findsOneWidget);
-      expect(find.byIcon(Icons.refresh), findsOneWidget);
       expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
 
       // Check that buttons are present - they are wrapped in SizedBox so we check for the text
       expect(find.text('Clear All Filters'), findsOneWidget);
-      expect(find.text('Restart Quiz'), findsOneWidget);
     });
   });
 }
