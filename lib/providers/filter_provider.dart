@@ -9,9 +9,13 @@ import '../providers/settings_provider.dart';
 /// Supports persistence across app sessions and OR logic for multiple filters
 class FilterProvider extends ChangeNotifier {
   static const String _filterPrefsKey = 'active_filters';
+  static const String _difficultyFilterPrefsKey = 'active_difficulty_filters';
 
   // Active filter categories (user-friendly names)
   Set<String> _activeFilters = <String>{};
+
+  // Active difficulty filters
+  Set<String> _activeDifficultyFilters = <String>{};
 
   // Original unfiltered question list
   List<QuestionIdentifier> _originalQuestions = [];
@@ -37,6 +41,10 @@ class FilterProvider extends ChangeNotifier {
   /// Get current active filters
   Set<String> get activeFilters => Set.unmodifiable(_activeFilters);
 
+  /// Get current active difficulty filters
+  Set<String> get activeDifficultyFilters =>
+      Set.unmodifiable(_activeDifficultyFilters);
+
   /// Get filtered questions based on active filters
   List<QuestionIdentifier> get filteredQuestions =>
       List.unmodifiable(_filteredQuestions);
@@ -46,10 +54,12 @@ class FilterProvider extends ChangeNotifier {
       List.unmodifiable(_originalQuestions);
 
   /// Check if any filters are active
-  bool get hasActiveFilters => _activeFilters.isNotEmpty;
+  bool get hasActiveFilters =>
+      _activeFilters.isNotEmpty || _activeDifficultyFilters.isNotEmpty;
 
   /// Get count of active filters
-  int get activeFilterCount => _activeFilters.length;
+  int get activeFilterCount =>
+      _activeFilters.length + _activeDifficultyFilters.length;
 
   /// Get total count of questions with valid metadata
   int get totalQuestionCount => _totalQuestionCount;
@@ -146,8 +156,16 @@ class FilterProvider extends ChangeNotifier {
 
   /// Clear all active filters
   Future<void> clearFilters() async {
+    bool hasChanges = false;
     if (_activeFilters.isNotEmpty) {
       _activeFilters.clear();
+      hasChanges = true;
+    }
+    if (_activeDifficultyFilters.isNotEmpty) {
+      _activeDifficultyFilters.clear();
+      hasChanges = true;
+    }
+    if (hasChanges) {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
@@ -157,6 +175,38 @@ class FilterProvider extends ChangeNotifier {
   /// Check if a specific filter is active
   bool isFilterActive(String category) {
     return _activeFilters.contains(category);
+  }
+
+  /// Add a difficulty filter
+  Future<void> addDifficultyFilter(String difficulty) async {
+    if (_activeDifficultyFilters.add(difficulty)) {
+      await _saveFiltersToPreferences();
+      _applyFilters();
+      notifyListeners();
+    }
+  }
+
+  /// Remove a difficulty filter
+  Future<void> removeDifficultyFilter(String difficulty) async {
+    if (_activeDifficultyFilters.remove(difficulty)) {
+      await _saveFiltersToPreferences();
+      _applyFilters();
+      notifyListeners();
+    }
+  }
+
+  /// Toggle a difficulty filter
+  Future<void> toggleDifficultyFilter(String difficulty) async {
+    if (_activeDifficultyFilters.contains(difficulty)) {
+      await removeDifficultyFilter(difficulty);
+    } else {
+      await addDifficultyFilter(difficulty);
+    }
+  }
+
+  /// Check if a specific difficulty filter is active
+  bool isDifficultyFilterActive(String difficulty) {
+    return _activeDifficultyFilters.contains(difficulty);
   }
 
   /// Check if current filters result in no questions
@@ -227,6 +277,39 @@ class FilterProvider extends ChangeNotifier {
     return counts;
   }
 
+  /// Get available difficulty levels based on question metadata
+  List<String> getAvailableDifficultyLevels() {
+    final availableDifficulties = <String>{};
+    final questionsToConsider = _getQuestionsForCountCalculation();
+
+    for (final question in questionsToConsider) {
+      if (question.metadata?.difficulty != null) {
+        availableDifficulties.add(question.metadata!.difficulty);
+      }
+    }
+
+    // Return in order: Easy, Medium, Hard
+    final orderedDifficulties = ['E', 'M', 'H'];
+    return orderedDifficulties
+        .where((d) => availableDifficulties.contains(d))
+        .toList();
+  }
+
+  /// Get count of questions for each available difficulty level
+  Map<String, int> getDifficultyQuestionCounts() {
+    final counts = <String, int>{};
+    final questionsToCount = _getQuestionsForCountCalculation();
+
+    for (final question in questionsToCount) {
+      if (question.metadata?.difficulty != null) {
+        final difficulty = question.metadata!.difficulty;
+        counts[difficulty] = (counts[difficulty] ?? 0) + 1;
+      }
+    }
+
+    return counts;
+  }
+
   List<QuestionIdentifier> _getQuestionsForCountCalculation() {
     List<QuestionIdentifier> questions = _originalQuestions;
 
@@ -280,15 +363,32 @@ class FilterProvider extends ChangeNotifier {
     _totalQuestionCount = questionsWithMetadata.length;
 
     List<QuestionIdentifier> matchedQuestions;
-    if (_activeFilters.isEmpty) {
-      // No category filters active, all questions with metadata are considered matched
+    if (_activeFilters.isEmpty && _activeDifficultyFilters.isEmpty) {
+      // No filters active, all questions with metadata are considered matched
       matchedQuestions = questionsWithMetadata;
     } else {
-      // Apply OR logic: question matches if it belongs to ANY active filter category
+      // Apply OR logic within each filter type, AND logic between filter types
       matchedQuestions = questionsWithMetadata.where((question) {
-        final questionCategory = CategoryMappingService.getUserFriendlyCategory(
-            question.metadata!.primaryClassCode);
-        return _activeFilters.contains(questionCategory);
+        bool categoryMatch = true;
+        bool difficultyMatch = true;
+
+        // Check category filter (if any active)
+        if (_activeFilters.isNotEmpty) {
+          final questionCategory =
+              CategoryMappingService.getUserFriendlyCategory(
+                  question.metadata!.primaryClassCode);
+          categoryMatch = _activeFilters.contains(questionCategory);
+        }
+
+        // Check difficulty filter (if any active)
+        if (_activeDifficultyFilters.isNotEmpty) {
+          final questionDifficulty = question.metadata!.difficulty;
+          difficultyMatch =
+              _activeDifficultyFilters.contains(questionDifficulty);
+        }
+
+        // Question must match both category and difficulty filters (if active)
+        return categoryMatch && difficultyMatch;
       }).toList();
     }
 
@@ -309,17 +409,28 @@ class FilterProvider extends ChangeNotifier {
   Future<void> _loadFiltersFromPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final filtersJson = prefs.getString(_filterPrefsKey);
 
+      // Load category filters
+      final filtersJson = prefs.getString(_filterPrefsKey);
       if (filtersJson != null) {
         final filtersList = List<String>.from(json.decode(filtersJson));
         _activeFilters = filtersList.toSet();
-        _applyFilters();
       }
+
+      // Load difficulty filters
+      final difficultyFiltersJson = prefs.getString(_difficultyFilterPrefsKey);
+      if (difficultyFiltersJson != null) {
+        final difficultyFiltersList =
+            List<String>.from(json.decode(difficultyFiltersJson));
+        _activeDifficultyFilters = difficultyFiltersList.toSet();
+      }
+
+      _applyFilters();
     } catch (e) {
       debugPrint('Error loading filters from preferences: $e');
       // Reset to empty filters on error
       _activeFilters.clear();
+      _activeDifficultyFilters.clear();
     }
   }
 
@@ -327,8 +438,15 @@ class FilterProvider extends ChangeNotifier {
   Future<void> _saveFiltersToPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Save category filters
       final filtersJson = json.encode(_activeFilters.toList());
       await prefs.setString(_filterPrefsKey, filtersJson);
+
+      // Save difficulty filters
+      final difficultyFiltersJson =
+          json.encode(_activeDifficultyFilters.toList());
+      await prefs.setString(_difficultyFilterPrefsKey, difficultyFiltersJson);
     } catch (e) {
       debugPrint('Error saving filters to preferences: $e');
     }
@@ -337,6 +455,7 @@ class FilterProvider extends ChangeNotifier {
   /// Reset filter state (useful for error recovery)
   Future<void> resetFilterState() async {
     _activeFilters.clear();
+    _activeDifficultyFilters.clear();
     _filteredQuestions.clear();
     _originalQuestions.clear();
     _filtersLoaded = false;
@@ -344,6 +463,7 @@ class FilterProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_filterPrefsKey);
+      await prefs.remove(_difficultyFilterPrefsKey);
     } catch (e) {
       debugPrint('Error clearing filter preferences: $e');
     }
@@ -354,6 +474,7 @@ class FilterProvider extends ChangeNotifier {
   @override
   void dispose() {
     _activeFilters.clear();
+    _activeDifficultyFilters.clear();
     _originalQuestions.clear();
     _filteredQuestions.clear();
     super.dispose();

@@ -8,6 +8,34 @@ import '../widgets/filter_chip_bar.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  /// Helper to map difficulty codes to human-readable labels
+  String _getDifficultyLabel(String code) {
+    switch (code) {
+      case 'E':
+        return 'Easy';
+      case 'M':
+        return 'Medium';
+      case 'H':
+        return 'Hard';
+      default:
+        return code;
+    }
+  }
+
+  /// Helper to get difficulty color
+  Color _getDifficultyColor(String code) {
+    switch (code) {
+      case 'E':
+        return Colors.green;
+      case 'M':
+        return Colors.orange;
+      case 'H':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,14 +156,17 @@ class SettingsScreen extends StatelessWidget {
                         FilterChipBar(
                           availableFilters: categories,
                           activeFilters: filterProvider.activeFilters,
+                          showClearAll: false,
                           onFilterToggle: (category) {
                             filterProvider.toggleFilter(category);
                             quizProvider.updateQuestionPool(filterProvider);
                           },
+                          /*
                           onClearAll: () {
                             filterProvider.clearFilters();
                             quizProvider.updateQuestionPool(filterProvider);
                           },
+                          */
                         ),
                         // Add visual separator between sections when both subjects are shown
                         if (questionType == QuestionType.both && !isLast)
@@ -147,7 +178,7 @@ class SettingsScreen extends StatelessWidget {
                             color: Theme.of(context)
                                 .colorScheme
                                 .outline
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                           ),
                       ],
                     );
@@ -183,19 +214,157 @@ class SettingsScreen extends StatelessWidget {
                           isLast: true,
                         ),
 
-                      if (filterProvider.hasActiveFilters)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text(
-                            '${filterProvider.filteredQuestions.length} questions match selected filters',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                      // Difficulty filters section
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Text(
+                          'Filter by Difficulty',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 4.0),
+                        child: Text(
+                          'Select difficulty levels to include in your quiz.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        child: Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: filterProvider
+                              .getAvailableDifficultyLevels()
+                              .map((difficulty) {
+                            final isActive = filterProvider
+                                .isDifficultyFilterActive(difficulty);
+                            final counts =
+                                filterProvider.getDifficultyQuestionCounts();
+                            final count = counts[difficulty] ?? 0;
+
+                            return FilterChip(
+                              label: Text(
+                                '${_getDifficultyLabel(difficulty)} ($count)',
+                                style: TextStyle(
+                                  color: isActive
+                                      ? Colors.white
+                                      : _getDifficultyColor(difficulty),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0),
+                              ),
+                              selected: isActive,
+                              onSelected: (selected) {
+                                filterProvider
+                                    .toggleDifficultyFilter(difficulty);
+                                quizProvider.updateQuestionPool(filterProvider);
+                              },
+                              selectedColor: _getDifficultyColor(difficulty),
+                              checkmarkColor: Colors.white,
+                              side: BorderSide(
+                                color: _getDifficultyColor(difficulty),
+                                width: 1.5,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: filterProvider.hasActiveFilters
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 250),
+                                    transitionBuilder: (Widget child,
+                                        Animation<double> animation) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0, -0.2),
+                                            end: Offset.zero,
+                                          ).animate(CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeOut,
+                                          )),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      key: ValueKey(filterProvider
+                                          .filteredQuestions.length),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0),
+                                      child: Text(
+                                        '${filterProvider.filteredQuestions.length} questions match selected filters',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 250),
+                                    transitionBuilder: (Widget child,
+                                        Animation<double> animation) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0, 0.2),
+                                            end: Offset.zero,
+                                          ).animate(CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeOut,
+                                          )),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      key: const ValueKey('clear_button'),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0),
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          filterProvider.clearFilters();
+                                          quizProvider.updateQuestionPool(
+                                              filterProvider);
+                                        },
+                                        icon: const Icon(Icons.clear_all),
+                                        label: const Text('Clear All Filters'),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
+                      ),
                     ],
                   );
                 },
