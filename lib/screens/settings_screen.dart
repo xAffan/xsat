@@ -215,22 +215,11 @@ class SettingsScreen extends StatelessWidget {
                         ),
 
                       // Difficulty filters section
-                      const SizedBox(height: 16),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Text(
-                          'Filter by Difficulty',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const Padding(
+                                            const Padding(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 4.0),
+                            horizontal: 16.0, vertical: 8.0),
                         child: Text(
-                          'Select difficulty levels to include in your quiz.',
+                          'Filter questions by difficulty. Multiple filters use OR logic.',
                           style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                       ),
@@ -257,11 +246,13 @@ class SettingsScreen extends StatelessWidget {
                                       ? Colors.white
                                       : _getDifficultyColor(difficulty),
                                   fontWeight: FontWeight.w500,
+                                  fontSize: 13.0,
                                 ),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20.0),
                               ),
+                              visualDensity: VisualDensity.compact,
                               selected: isActive,
                               onSelected: (selected) {
                                 filterProvider

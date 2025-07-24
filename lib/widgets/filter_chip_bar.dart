@@ -38,13 +38,13 @@ class FilterChipBar extends StatelessWidget {
 
     // If no filters are available, show empty state
     if (availableFilters.isEmpty) {
-      return SizedBox(
-        height: height,
+      return Container(
+        padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Text(
             'No filter categories available',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ),
@@ -52,37 +52,25 @@ class FilterChipBar extends StatelessWidget {
     }
 
     return Container(
-      height: height,
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Clear all button (if enabled and filters are active)
           if (showClearAll && activeFilters.isNotEmpty && onClearAll != null)
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 8.0),
+              padding: const EdgeInsets.only(bottom: 8.0),
               child: _buildClearAllButton(context),
             ),
 
-          // Scrollable filter chips
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(
-                left: showClearAll &&
-                        activeFilters.isNotEmpty &&
-                        onClearAll != null
-                    ? 0
-                    : 16.0,
-                right: 16.0,
-              ),
-              itemCount: availableFilters.length,
-              separatorBuilder: (context, index) => _buildSeparator(index),
-              itemBuilder: (context, index) {
-                final filter = availableFilters[index];
-                final isActive = activeFilters.contains(filter);
-                return _buildFilterChip(context, filter, isActive);
-              },
-            ),
+          // Wrapping filter chips
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children: availableFilters.map((filter) {
+              final isActive = activeFilters.contains(filter);
+              return _buildFilterChip(context, filter, isActive);
+            }).toList(),
           ),
         ],
       ),
@@ -111,7 +99,7 @@ class FilterChipBar extends StatelessWidget {
       side: BorderSide(
         color: isActive
             ? colorScheme.primary
-            : colorScheme.outline.withOpacity(0.5),
+            : colorScheme.outline.withValues(alpha: 0.5),
         width: isActive ? 2.0 : 1.0,
       ),
       shape: RoundedRectangleBorder(
@@ -121,7 +109,7 @@ class FilterChipBar extends StatelessWidget {
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
       elevation: isActive ? 2.0 : 0.0,
-      shadowColor: colorScheme.shadow.withOpacity(0.3),
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.3),
     );
   }
 
@@ -160,38 +148,5 @@ class FilterChipBar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Builds appropriate separator based on filter position and type
-  Widget _buildSeparator(int index) {
-    // Import CategoryMappingService to check subject types
-    if (index >= availableFilters.length - 1) {
-      return const SizedBox(width: 8.0);
-    }
-
-    final currentFilter = availableFilters[index];
-    final nextFilter = availableFilters[index + 1];
-
-    // Try to determine if we're crossing between subject types
-    final currentIsEnglish = _isEnglishCategory(currentFilter);
-    final nextIsEnglish = _isEnglishCategory(nextFilter);
-
-    // If we're crossing between English and Math categories, add extra spacing
-    if (currentIsEnglish != nextIsEnglish) {
-      return const SizedBox(width: 20.0); // Extra spacing between subjects
-    }
-
-    return const SizedBox(width: 8.0); // Normal spacing
-  }
-
-  /// Helper method to determine if a category is English-related
-  bool _isEnglishCategory(String category) {
-    const englishCategories = [
-      'Information and Ideas',
-      'Craft and Structure',
-      'Expression of Ideas',
-      'Standard English Conventions',
-    ];
-    return englishCategories.contains(category);
   }
 }
