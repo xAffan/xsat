@@ -1,7 +1,7 @@
 {
     "name": "xSAT",
     "short_name": "xSAT",
-    "start_url": "/sat_quiz/",
+    "start_url": "/xsat/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
