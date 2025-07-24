@@ -1,4 +1,4 @@
-import 'package:sat_quiz/utils/html_processor.dart';
+import 'package:xsat/utils/html_processor.dart';
 
 void main() {
   String html = '''<p style="text-align: center;"><figure class='image'><svg role="img" version="1.1" viewBox="0 0 378.885664 362.16" width="378.885664px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-label="Graph of a curve in the x y plane with the origin labeled O. The x axis ranges from negative 1 to 1 in increments of 1. The y axis ranges from negative 12 to 1 in increments of 1. Refer to long description.">

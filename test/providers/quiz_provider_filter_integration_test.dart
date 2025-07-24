@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:sat_quiz/providers/quiz_provider.dart';
-import 'package:sat_quiz/providers/filter_provider.dart';
-import 'package:sat_quiz/models/question_identifier.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
+import 'package:xsat/providers/quiz_provider.dart';
+import 'package:xsat/providers/filter_provider.dart';
+import 'package:xsat/models/question_identifier.dart';
+import 'package:xsat/models/question_metadata.dart';
 
 void main() {
   group('QuizProvider FilterProvider Integration Unit Tests', () {

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sat_quiz/providers/filter_provider.dart';
-import 'package:sat_quiz/providers/quiz_provider.dart';
-import 'package:sat_quiz/providers/settings_provider.dart';
-import 'package:sat_quiz/widgets/no_results_widget.dart';
-import 'package:sat_quiz/screens/quiz_screen.dart';
-import 'package:sat_quiz/models/question_identifier.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
+import 'package:xsat/providers/filter_provider.dart';
+import 'package:xsat/providers/quiz_provider.dart';
+import 'package:xsat/providers/settings_provider.dart';
+import 'package:xsat/widgets/no_results_widget.dart';
+import 'package:xsat/screens/quiz_screen.dart';
+import 'package:xsat/models/question_identifier.dart';
+import 'package:xsat/models/question_metadata.dart';
 
 void main() {
   group('No Results Integration Tests', () {

@@ -1,8 +1,8 @@
-import 'package:sat_quiz/providers/settings_provider.dart';
+import 'package:xsat/providers/settings_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/providers/filter_provider.dart';
-import 'package:sat_quiz/models/question_identifier.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
+import 'package:xsat/providers/filter_provider.dart';
+import 'package:xsat/models/question_identifier.dart';
+import 'package:xsat/models/question_metadata.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

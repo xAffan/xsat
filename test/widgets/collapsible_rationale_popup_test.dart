@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/widgets/collapsible_rationale_popup.dart';
+import 'package:xsat/widgets/collapsible_rationale_popup.dart';
 
 void main() {
   group('CollapsibleRationalePopup', () {

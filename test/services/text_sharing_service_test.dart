@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/services/text_sharing_service.dart';
-import 'package:sat_quiz/models/question.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
+import 'package:xsat/services/text_sharing_service.dart';
+import 'package:xsat/models/question.dart';
+import 'package:xsat/models/question_metadata.dart';
 
 void main() {
   group('TextSharingService', () {

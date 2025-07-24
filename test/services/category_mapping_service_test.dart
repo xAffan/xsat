@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/services/category_mapping_service.dart';
+import 'package:xsat/services/category_mapping_service.dart';
 
 void main() {
   group('CategoryMappingService', () {

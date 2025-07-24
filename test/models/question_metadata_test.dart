@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
+import 'package:xsat/models/question_metadata.dart';
 
 void main() {
   group('QuestionMetadata', () {

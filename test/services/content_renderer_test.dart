@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/services/content_renderer.dart';
-import 'package:sat_quiz/models/content_block.dart';
+import 'package:xsat/services/content_renderer.dart';
+import 'package:xsat/models/content_block.dart';
 
 void main() {
   group('ContentRenderer', () {

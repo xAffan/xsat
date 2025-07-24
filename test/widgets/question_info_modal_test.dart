@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sat_quiz/models/question_metadata.dart';
-import 'package:sat_quiz/widgets/question_info_modal.dart';
+import 'package:xsat/models/question_metadata.dart';
+import 'package:xsat/widgets/question_info_modal.dart';
 
 void main() {
   group('QuestionInfoModal', () {
