@@ -80,8 +80,7 @@ class QuizProvider with ChangeNotifier {
             questions: allIdentifiers,
             liveQuestionIds: liveIds,
             seenQuestionIds: seenIds,
-            questionType:
-                settingsProvider?.questionType ?? QuestionType.both,
+            questionType: settingsProvider?.questionType ?? QuestionType.both,
             excludeActiveQuestions:
                 settingsProvider?.excludeActiveQuestions ?? false);
         _questionPool = List.from(filterProvider.filteredQuestions);
@@ -205,9 +204,11 @@ class QuizProvider with ChangeNotifier {
         final category = meta?.primaryClassDescription ?? 'Unknown';
         final subject = meta?.skillDescription ?? 'Unknown';
         final mistake = Mistake(
-          question: _currentQuestion!.stem,
+          question: _currentQuestion!.stimulus + _currentQuestion!.stem,
           userAnswer: _selectedAnswerId ?? '',
-          correctAnswer: _currentQuestion!.correctKey.trim().isNotEmpty ? _currentQuestion!.correctKey : 'See explanation',
+          correctAnswer: _currentQuestion!.correctKey.trim().isNotEmpty
+              ? _currentQuestion!.correctKey
+              : 'See explanation',
           timestamp: DateTime.now(),
           rationale: _currentQuestion!.rationale,
           userAnswerLabel: '',
@@ -219,18 +220,27 @@ class QuizProvider with ChangeNotifier {
         );
         // Only record mistake if answer is incorrect (if correct answer is available)
         final hasCorrect = mistake.correctAnswer.trim().isNotEmpty;
-        final isCorrect = hasCorrect && mistake.userAnswer.trim().toLowerCase() == mistake.correctAnswer.trim().toLowerCase();
+        final isCorrect = hasCorrect &&
+            mistake.userAnswer.trim().toLowerCase() ==
+                mistake.correctAnswer.trim().toLowerCase();
         if (!isCorrect) {
           _mistakeService.addMistake(mistake);
         }
       } else {
         // MCQ logic (existing)
         final options = _currentQuestion!.answerOptions;
-        final selectedIndex = options.indexWhere((option) => option.id == _selectedAnswerId);
-        final correctIndex = options.indexWhere((option) => option.id == _currentQuestion!.correctKey);
-        final selectedOption = selectedIndex != -1 ? options[selectedIndex] : AnswerOption(id: _selectedAnswerId!, content: '');
-        final correctOption = correctIndex != -1 ? options[correctIndex] : AnswerOption(id: _currentQuestion!.correctKey, content: '');
-        String getLabel(int idx) => idx >= 0 && idx < 26 ? String.fromCharCode(65 + idx) : '?';
+        final selectedIndex =
+            options.indexWhere((option) => option.id == _selectedAnswerId);
+        final correctIndex = options
+            .indexWhere((option) => option.id == _currentQuestion!.correctKey);
+        final selectedOption = selectedIndex != -1
+            ? options[selectedIndex]
+            : AnswerOption(id: _selectedAnswerId!, content: '');
+        final correctOption = correctIndex != -1
+            ? options[correctIndex]
+            : AnswerOption(id: _currentQuestion!.correctKey, content: '');
+        String getLabel(int idx) =>
+            idx >= 0 && idx < 26 ? String.fromCharCode(65 + idx) : '?';
         final userLabel = getLabel(selectedIndex);
         final correctLabel = getLabel(correctIndex);
         final answerOptions = <MistakeAnswerOption>[];
@@ -245,9 +255,13 @@ class QuizProvider with ChangeNotifier {
         final category = meta?.primaryClassDescription ?? 'Unknown';
         final subject = meta?.skillDescription ?? 'Unknown';
         final mistake = Mistake(
-          question: _currentQuestion!.stem,
-          userAnswer: (selectedOption.content.isNotEmpty ? selectedOption.content : 'N/A'),
-          correctAnswer: (correctOption.content.isNotEmpty ? correctOption.content : 'N/A'),
+          question: _currentQuestion!.stimulus + _currentQuestion!.stem,
+          userAnswer: (selectedOption.content.isNotEmpty
+              ? selectedOption.content
+              : 'N/A'),
+          correctAnswer: (correctOption.content.isNotEmpty
+              ? correctOption.content
+              : 'N/A'),
           timestamp: DateTime.now(),
           rationale: _currentQuestion!.rationale,
           userAnswerLabel: userLabel,
@@ -270,6 +284,9 @@ class QuizProvider with ChangeNotifier {
   /// Refresh question pool when filters change
   Future<void> refreshQuestionPool(FilterProvider filterProvider) async {
     try {
+      // Store the current state to preserve it if the current question is still valid
+      final previousState = _state;
+
       _state = QuizState.loading;
       notifyListeners();
 
@@ -293,7 +310,10 @@ class QuizProvider with ChangeNotifier {
         if (_currentQuestion != null &&
             filterProvider.filteredQuestions
                 .any((q) => q.id == _currentQuestion!.externalId)) {
-          _state = QuizState.ready;
+          // Preserve the previous state (ready or answered) since the current question is still valid
+          _state = previousState == QuizState.answered
+              ? QuizState.answered
+              : QuizState.ready;
         } else {
           await _loadNextQuestion();
         }
