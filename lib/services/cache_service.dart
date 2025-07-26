@@ -1,5 +1,6 @@
 // lib/services/cache_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/sync_helper.dart';
 
 class CacheService {
   static const _seenQuestionsKey = 'seen_questions';
@@ -14,6 +15,9 @@ class CacheService {
     if (!seenIds.contains(id)) {
       seenIds.add(id);
       await prefs.setStringList(_seenQuestionsKey, seenIds);
+
+      // Sync to cloud immediately (non-blocking)
+      SyncHelper.syncSeenQuestion(id);
     }
   }
 

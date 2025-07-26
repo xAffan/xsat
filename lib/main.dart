@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'providers/quiz_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/filter_provider.dart';
 import 'screens/quiz_screen.dart';
 import 'screens/onboarding_screen.dart';
-
 import 'screens/mistake_history_screen.dart';
+import 'screens/sync_screen.dart';
 import 'services/share_service.dart';
 import 'services/text_sharing_service.dart';
+import 'services/mistake_restoration_service.dart';
+import 'utils/sync_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await Hive.initFlutter();
   runApp(const XSAT());
 }
@@ -34,11 +41,31 @@ class XSAT extends StatelessWidget {
             return filterProvider;
           },
         ),
+        ChangeNotifierProvider(
+            create: (context) => MistakeRestorationService()),
         Provider(create: (context) => ShareService()),
         Provider(create: (context) => TextSharingService()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settingsProvider, child) {
+          // Set up sync callbacks for real-time sync
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final filterProvider = context.read<FilterProvider>();
+
+            // Settings sync callback
+            settingsProvider.setSyncCallback(() async {
+              if (context.mounted) {
+                await SyncHelper.syncSettings(context);
+              }
+            });
+
+            // Filter sync callback
+            filterProvider.setSyncCallback(() async {
+              if (context.mounted) {
+                await SyncHelper.syncFilters(context);
+              }
+            });
+          });
           // Define the light theme
           final lightTheme = ThemeData(
               primaryColor: Colors.blue.shade800,
@@ -75,6 +102,7 @@ class XSAT extends StatelessWidget {
               '/quiz': (context) => const QuizScreen(),
               '/onboarding': (context) => const OnboardingScreen(),
               '/mistakes': (context) => const MistakeHistoryScreen(),
+              '/sync': (context) => const SyncScreen(),
             },
             home: settingsProvider.onboardingCompleted
                 ? const QuizScreen()

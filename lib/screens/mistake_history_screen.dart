@@ -3,8 +3,11 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_html_math/flutter_html_math.dart';
 import 'package:flutter_html_svg/flutter_html_svg.dart';
 import 'package:flutter_html_table/flutter_html_table.dart';
+import 'package:provider/provider.dart';
+import 'package:xsat/utils/sync_helper.dart';
 import '../models/mistake.dart';
 import '../services/mistake_service.dart';
+import '../services/mistake_restoration_service.dart';
 import '../utils/html_processor.dart';
 
 // Utility class for difficulty-related functions
@@ -41,7 +44,7 @@ class TimestampUtils {
   static String formatRelative(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -64,13 +67,14 @@ class HtmlUtils {
     // Remove HTML tags for length calculation
     final plainText = html.replaceAll(RegExp(r'<[^>]*>'), '');
     if (plainText.length <= maxLength) return html;
-    
+
     // Find a good truncation point
     final truncated = plainText.substring(0, maxLength);
     return '$truncated...';
   }
 
-  static Widget buildHtml(String content, {required bool darkMode, double fontSize = 16}) {
+  static Widget buildHtml(String content,
+      {required bool darkMode, double fontSize = 16}) {
     return Html(
       data: HtmlProcessor.process(content, darkMode: darkMode),
       style: {
@@ -101,6 +105,7 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
   List<Mistake> _mistakes = [];
   List<Mistake> _filteredMistakes = [];
   bool _loading = true;
+  bool _clearingMistakes = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -115,6 +120,11 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshMistakes() async {
+    _mistakes = _mistakeService.getMistakes().reversed.toList();
+    _filteredMistakes = _mistakes;
   }
 
   Future<void> _init() async {
@@ -135,9 +145,11 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
         _filteredMistakes = _mistakes.where((mistake) {
           final queryLower = query.toLowerCase();
           return mistake.question.toLowerCase().contains(queryLower) ||
-                 mistake.category.toLowerCase().contains(queryLower) ||
-                 mistake.subject.toLowerCase().contains(queryLower) ||
-                 DifficultyUtils.getName(mistake.difficulty).toLowerCase().contains(queryLower);
+              mistake.category.toLowerCase().contains(queryLower) ||
+              mistake.subject.toLowerCase().contains(queryLower) ||
+              DifficultyUtils.getName(mistake.difficulty)
+                  .toLowerCase()
+                  .contains(queryLower);
         }).toList();
       }
     });
@@ -148,7 +160,8 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear All Mistakes'),
-        content: const Text('Are you sure you want to clear all mistake history? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to clear all mistake history? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -164,11 +177,88 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
     );
 
     if (confirmed == true) {
-      await _mistakeService.clearMistakes();
       setState(() {
-        _mistakes = [];
-        _filteredMistakes = [];
+        _clearingMistakes = true;
       });
+
+      try {
+        // Show progress dialog
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Expanded(child: Text('Clearing mistake history...')),
+                ],
+              ),
+            ),
+          );
+        }
+
+        await _mistakeService.clearMistakes();
+        if (context.mounted) {
+          await SyncHelper.syncClearMistakes(context);
+        }
+
+        setState(() {
+          _mistakes = [];
+          _filteredMistakes = [];
+        });
+
+        // Hide progress dialog
+        if (context.mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        // Show success dialog
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Success'),
+              content: const Text('Mistake history cleared successfully!'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        // Hide progress dialog
+        if (context.mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        // Show error dialog
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to clear mistakes: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _clearingMistakes = false;
+          });
+        }
+      }
     }
   }
 
@@ -181,33 +271,81 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Mistake History (${_mistakes.length})'),
-        elevation: 0,
-        actions: [
-          if (_mistakes.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear_all),
-              onPressed: _clearMistakes,
-              tooltip: 'Clear All',
-            ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _mistakes.isEmpty
-              ? _buildEmptyState()
-              : Column(
-                  children: [
-                    _buildSearchBar(),
-                    Expanded(child: _buildMistakesList()),
-                  ],
-                ),
+    return Consumer<MistakeRestorationService>(
+      builder: (context, restorationService, child) {
+        // Refresh mistakes when restoration completes
+        if (!restorationService.isRestoring && !_loading) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _refreshMistakes();
+            setState(() {});
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(restorationService.isRestoring
+                ? 'Mistake History (Restoring...)'
+                : 'Mistake History (${_mistakes.length})'),
+            elevation: 0,
+            actions: [
+              if (_mistakes.isNotEmpty)
+                _clearingMistakes
+                    ? const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.clear_all),
+                        onPressed: _clearMistakes,
+                        tooltip: 'Clear All',
+                      ),
+            ],
+          ),
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _mistakes.isEmpty
+                  ? _buildEmptyState(restorationService)
+                  : Column(
+                      children: [
+                        _buildSearchBar(),
+                        Expanded(child: _buildMistakesList()),
+                      ],
+                    ),
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(MistakeRestorationService restorationService) {
+    // Check if mistakes are being restored
+    if (restorationService.isRestoring) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              restorationService.restorationMessage,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we restore your mistake history',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).hintColor,
+                  ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Normal empty state
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -226,8 +364,8 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
           Text(
             'Keep practicing to improve your knowledge',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).hintColor,
-            ),
+                  color: Theme.of(context).hintColor,
+                ),
           ),
         ],
       ),
@@ -241,7 +379,8 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
         controller: _searchController,
         onChanged: _filterMistakes,
         decoration: InputDecoration(
-          hintText: 'Search mistakes by question, category, subject, or difficulty...',
+          hintText:
+              'Search mistakes by question, category, subject, or difficulty...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -299,8 +438,8 @@ class _MistakeHistoryScreenState extends State<MistakeHistoryScreen> {
           Text(
             'Try adjusting your search terms',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).hintColor,
-            ),
+                  color: Theme.of(context).hintColor,
+                ),
           ),
         ],
       ),
@@ -318,84 +457,82 @@ class _CompactMistakeCard extends StatelessWidget {
   });
 
   // Replace the metadata row in _CompactMistakeCard with this responsive version
-Widget _buildMetadataRow(BuildContext context) {
-  final theme = Theme.of(context);
-  
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Tags section - can wrap and compress
-      Expanded(
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            _MetaChip(
-              label: DifficultyUtils.getName(mistake.difficulty),
-              color: DifficultyUtils.getColor(mistake.difficulty),
-            ),
-            _MetaChip(
-              label: mistake.category,
-              color: Colors.blue,
-            ),
-            _MetaChip(
-              label: mistake.subject,
-              color: Colors.purple,
-            ),
-          ],
+  Widget _buildMetadataRow(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tags section - can wrap and compress
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _MetaChip(
+                label: DifficultyUtils.getName(mistake.difficulty),
+                color: DifficultyUtils.getColor(mistake.difficulty),
+              ),
+              _MetaChip(
+                label: mistake.category,
+                color: Colors.blue,
+              ),
+              _MetaChip(
+                label: mistake.subject,
+                color: Colors.purple,
+              ),
+            ],
+          ),
+        ),
+        // Timestamp - always on the right
+        const SizedBox(width: 12),
+        Text(
+          TimestampUtils.formatRelative(mistake.timestamp),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.hintColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Question preview (truncated)
+              HtmlUtils.buildHtml(
+                HtmlUtils.truncate(mistake.question, 100),
+                darkMode: isDark,
+                fontSize: 15,
+              ),
+              const SizedBox(height: 12),
+
+              // Metadata with wrap for narrow screens
+              _buildMetadataRow(context),
+              const SizedBox(height: 12),
+
+              // Answer summary
+              _AnswerSummary(mistake: mistake),
+            ],
+          ),
         ),
       ),
-      // Timestamp - always on the right
-      const SizedBox(width: 12),
-      Text(
-        TimestampUtils.formatRelative(mistake.timestamp),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.hintColor,
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }
-
-@override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
-  
-  return Card(
-    elevation: 1,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Question preview (truncated)
-            HtmlUtils.buildHtml(
-              HtmlUtils.truncate(mistake.question, 100),
-              darkMode: isDark,
-              fontSize: 15,
-            ),
-            const SizedBox(height: 12),
-            
-            // Metadata with wrap for narrow screens
-            _buildMetadataRow(context),
-            const SizedBox(height: 12),
-            
-            // Answer summary
-            _AnswerSummary(mistake: mistake),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-}
-
 
 // Updated _AnswerSummary to fix arrow positioning while keeping same line layout
 
@@ -408,7 +545,7 @@ class _AnswerSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         // Left side - expandable content area
@@ -430,7 +567,8 @@ class _AnswerSummary extends StatelessWidget {
               Flexible(
                 child: Text(
                   'Correct: ${mistake.answerOptions.isEmpty ? mistake.correctAnswer : mistake.correctAnswerLabel}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.green),
+                  style:
+                      theme.textTheme.bodySmall?.copyWith(color: Colors.green),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -484,7 +622,7 @@ class _MistakeDetailsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -504,22 +642,23 @@ class _MistakeDetailsDialog extends StatelessWidget {
                     const SizedBox(height: 8),
                     HtmlUtils.buildHtml(mistake.question, darkMode: isDark),
                     const SizedBox(height: 20),
-                    
+
                     // Metadata
                     _SectionHeader(title: 'Details', icon: Icons.info_outline),
                     const SizedBox(height: 8),
                     _MetadataChips(mistake: mistake),
                     const SizedBox(height: 20),
-                    
+
                     // Answers
-                    if (mistake.answerOptions.isEmpty) 
+                    if (mistake.answerOptions.isEmpty)
                       _SPRAnswers(mistake: mistake, isDark: isDark)
                     else
                       _MultipleChoiceAnswers(mistake: mistake, isDark: isDark),
-                    
+
                     // Explanation
                     if (mistake.rationale.isNotEmpty) ...[
-                      _SectionHeader(title: 'Explanation', icon: Icons.lightbulb_outline),
+                      _SectionHeader(
+                          title: 'Explanation', icon: Icons.lightbulb_outline),
                       const SizedBox(height: 8),
                       _ExplanationContainer(mistake: mistake, isDark: isDark),
                     ],
@@ -539,7 +678,7 @@ class _DialogHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -611,7 +750,7 @@ class _SPRAnswers extends StatelessWidget {
   const _SPRAnswers({required this.mistake, required this.isDark});
 
   @override
-  Widget build(BuildContext context) {    
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -650,11 +789,11 @@ class _MultipleChoiceAnswers extends StatelessWidget {
         _SectionHeader(title: 'Answer Options', icon: Icons.list),
         const SizedBox(height: 8),
         ...mistake.answerOptions.map((option) => _AnswerOption(
-          option: option,
-          isUserAnswer: option.label == mistake.userAnswerLabel,
-          isCorrectAnswer: option.label == mistake.correctAnswerLabel,
-          isDark: isDark,
-        )),
+              option: option,
+              isUserAnswer: option.label == mistake.userAnswerLabel,
+              isCorrectAnswer: option.label == mistake.correctAnswerLabel,
+              isDark: isDark,
+            )),
         const SizedBox(height: 20),
       ],
     );
@@ -677,7 +816,7 @@ class _AnswerContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -731,7 +870,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Icon(icon, size: 20, color: theme.primaryColor),
@@ -815,13 +954,15 @@ class _AnswerOption extends StatelessWidget {
     Color backgroundColor;
     Color borderColor;
     IconData? icon;
-    
+
     if (isCorrectAnswer) {
-      backgroundColor = isDark ? Colors.green[900]!.withOpacity(0.3) : Colors.green[50]!;
+      backgroundColor =
+          isDark ? Colors.green[900]!.withOpacity(0.3) : Colors.green[50]!;
       borderColor = Colors.green;
       icon = Icons.check_circle;
     } else if (isUserAnswer) {
-      backgroundColor = isDark ? Colors.red[900]!.withOpacity(0.3) : Colors.red[50]!;
+      backgroundColor =
+          isDark ? Colors.red[900]!.withOpacity(0.3) : Colors.red[50]!;
       borderColor = Colors.red;
       icon = Icons.cancel;
     } else {

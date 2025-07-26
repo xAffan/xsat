@@ -13,6 +13,7 @@ import '../providers/filter_provider.dart';
 import '../services/share_service.dart';
 import '../services/sound_service.dart';
 import '../utils/html_processor.dart';
+import '../utils/sync_helper.dart';
 import '../widgets/answer_option.dart';
 import '../widgets/collapsible_rationale_popup.dart';
 import '../widgets/question_count_widget.dart';
@@ -56,10 +57,15 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize services
     _shareService = ShareService();
     _soundService = SoundService();
+
+    // Check for startup sync after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SyncHelper.checkInitialSync(context);
+    });
 
     // Initialize animation controllers
     _questionAnimationController = AnimationController(
@@ -79,7 +85,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       parent: _questionAnimationController,
       curve: Curves.easeOutCubic,
     ));
-
 
     // Initialize the quiz after the first frame is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -130,13 +135,16 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     // Initialize filter provider if not already done
     filterProvider.initialize().then((_) {
       if (mounted) {
-        context
-            .read<QuizProvider>()
+        final quizProvider = context.read<QuizProvider>();
+        // Set providers for sync functionality
+        quizProvider.setProviders(settingsProvider, filterProvider);
+
+        quizProvider
             .initializeQuiz(
-              settingsProvider.questionType,
-              settingsProvider: settingsProvider,
-              filterProvider: filterProvider,
-            )
+          settingsProvider.questionType,
+          settingsProvider: settingsProvider,
+          filterProvider: filterProvider,
+        )
             .then((_) {
           if (mounted) {
             _setupFilterListener();
@@ -189,18 +197,23 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         final quizProvider = context.read<QuizProvider>();
         final selectedAnswerId = quizProvider.selectedAnswerId;
 
-        if (selectedAnswerId != null && _answerOptionKeys.containsKey(selectedAnswerId)) {
+        if (selectedAnswerId != null &&
+            _answerOptionKeys.containsKey(selectedAnswerId)) {
           final selectedKey = _answerOptionKeys[selectedAnswerId]!;
-          final RenderBox? renderBox = selectedKey.currentContext?.findRenderObject() as RenderBox?;
+          final RenderBox? renderBox =
+              selectedKey.currentContext?.findRenderObject() as RenderBox?;
 
           if (renderBox != null) {
-            final position = renderBox.localToGlobal(Offset.zero, ancestor: context.findRenderObject());
+            final position = renderBox.localToGlobal(Offset.zero,
+                ancestor: context.findRenderObject());
             final scrollOffset = _scrollController.position.pixels;
             final viewportHeight = _scrollController.position.viewportDimension;
-            final targetOffset = position.dy + scrollOffset - (viewportHeight / 2);
+            final targetOffset =
+                position.dy + scrollOffset - (viewportHeight / 2);
 
             _scrollController.animateTo(
-              targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+              targetOffset.clamp(
+                  0.0, _scrollController.position.maxScrollExtent),
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
@@ -250,7 +263,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
 
       if (!result.success && mounted) {
-        _showSnackBar(result.message ?? 'An unknown error occurred.', Colors.red);
+        _showSnackBar(
+            result.message ?? 'An unknown error occurred.', Colors.red);
       } else if (result.success && result.message != null && mounted) {
         _showSnackBar(result.message!, Colors.green);
       }
@@ -280,6 +294,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     // Submit the answer
     provider.submitAnswer();
+
+    // Incremental sync is now handled automatically in submitAnswer()
 
     // Play sound based on whether answer is correct
     final settingsProvider = context.read<SettingsProvider>();
@@ -315,7 +331,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     final settingsProvider = context.watch<SettingsProvider>();
 
     // Start FAB animation when question is ready
-    if (quizProvider.state == QuizState.ready && !_fabAnimationController.isCompleted) {
+    if (quizProvider.state == QuizState.ready &&
+        !_fabAnimationController.isCompleted) {
       _fabAnimationController.forward();
     }
 
@@ -327,7 +344,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   }
 
   /// Builds a modern, clean app bar
-  PreferredSizeWidget _buildModernAppBar(BuildContext context, SettingsProvider settingsProvider) {
+  PreferredSizeWidget _buildModernAppBar(
+      BuildContext context, SettingsProvider settingsProvider) {
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
@@ -336,7 +354,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       title: Row(
         children: [
           // App icon with subtle animation
-            Container(
+          Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -365,7 +383,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         showProgress: true,
                         textStyle: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
                         ),
                       );
                     } else {
@@ -373,7 +394,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         showProgress: false,
                         textStyle: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
                         ),
                       );
                     }
@@ -385,60 +409,74 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         ],
       ),
       actions: [
-                  // Share button as IconButton
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.share, color: Colors.blue, size: 20),
-                    ),
-                    onPressed: () => _shareQuestion(),
-                    tooltip: 'Share Question',
-                        padding: EdgeInsets.zero,          // <-- remove default padding
-
-                  ),
-                  // Mistakes history button as IconButton (only if caching enabled)
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.history, color: Colors.orange, size: 20),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/mistakes');
-                    },
-                    tooltip: 'Mistakes History',
-                        padding: EdgeInsets.zero,          // <-- remove default padding
-
-                  ),
-                  // Modern settings button
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.settings_outlined, size: 20),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                      );
-                    },
-                        padding: EdgeInsets.zero,          // <-- remove default padding
-                    tooltip: 'Settings',  
-                  ),
-                  SizedBox(
-                    width: 2, // Add spacing between actions
-                  ),
+        // Share button as IconButton
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.share, color: Colors.blue, size: 20),
+          ),
+          onPressed: () => _shareQuestion(),
+          tooltip: 'Share Question',
+          padding: EdgeInsets.zero, // <-- remove default padding
+        ),
+        // Modern sync button
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.sync, color: Colors.purple, size: 20),
+          ),
+          onPressed: () {
+            Navigator.pushNamed(context, '/sync');
+          },
+          tooltip: 'Sync',
+          padding: EdgeInsets.zero,
+        ),
+        // Mistakes history button as IconButton
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.history, color: Colors.orange, size: 20),
+          ),
+          onPressed: () {
+            Navigator.pushNamed(context, '/mistakes');
+          },
+          tooltip: 'Mistakes History',
+          padding: EdgeInsets.zero, // <-- remove default padding
+        ),
+        // Modern settings button
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.settings_outlined, size: 20),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          },
+          padding: EdgeInsets.zero, // <-- remove default padding
+          tooltip: 'Settings',
+        ),
+        SizedBox(
+          width: 2, // Add spacing between actions
+        ),
       ],
     );
   }
@@ -525,8 +563,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -540,12 +580,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     return Consumer<FilterProvider>(
       builder: (context, filterProvider, child) {
         final hasActiveFilters = filterProvider.hasActiveFilters;
-        final isNoResults = provider.errorMessage?.contains("No questions match") == true;
+        final isNoResults =
+            provider.errorMessage?.contains("No questions match") == true;
 
         if (isNoResults) {
           return NoResultsWidget(
             hasActiveFilters: hasActiveFilters,
-            onClearFilters: hasActiveFilters ? () => filterProvider.clearFilters() : null,
+            onClearFilters:
+                hasActiveFilters ? () => filterProvider.clearFilters() : null,
             customMessage: provider.errorMessage,
           );
         }
@@ -584,7 +626,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -595,8 +640,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -610,7 +657,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   /// Builds the enhanced quiz layout with animations
   Widget _buildQuizLayout(BuildContext context, QuizProvider provider) {
     final question = provider.currentQuestion!;
-    
+
     Widget answerSection;
     if (question.type == 'mcq') {
       answerSection = Column(
@@ -667,88 +714,111 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                             minHeight: viewportConstraints.maxHeight,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
                             child: Column(
                               children: [
                                 PreferredSize(
-        preferredSize: const Size.fromHeight(44),
-        child: Consumer<QuizProvider>(
-          builder: (context, quizProvider, _) {
-            final metadata = quizProvider.currentQuestion?.metadata;
-            if (metadata == null) {
-              return const SizedBox.shrink();
-            }
+                                  preferredSize: const Size.fromHeight(44),
+                                  child: Consumer<QuizProvider>(
+                                    builder: (context, quizProvider, _) {
+                                      final metadata = quizProvider
+                                          .currentQuestion?.metadata;
+                                      if (metadata == null) {
+                                        return const SizedBox.shrink();
+                                      }
 
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Wrap(
-                  alignment: WrapAlignment.center,
-                runSpacing: 8,
-                children: [
-                  // Category chip
-                  _MetadataChip(
-                    label: metadata.primaryClassDescription,
-                    icon: Icons.category_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  // Skill chip
-                  _MetadataChip(
-                    label: metadata.skillDescription,
-                    icon: Icons.psychology_outlined,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  const SizedBox(width: 8),
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 8),
+                                        child: Wrap(
+                                          alignment: WrapAlignment.center,
+                                          runSpacing: 8,
+                                          children: [
+                                            // Category chip
+                                            _MetadataChip(
+                                              label: metadata
+                                                  .primaryClassDescription,
+                                              icon: Icons.category_outlined,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // Skill chip
+                                            _MetadataChip(
+                                              label: metadata.skillDescription,
+                                              icon: Icons.psychology_outlined,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .secondary,
+                                            ),
+                                            const SizedBox(width: 8),
 
-                  // Difficulty badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getDifficultyColor(metadata.difficulty),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getDifficultyLabel(metadata.difficulty),
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+                                            // Difficulty badge
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: _getDifficultyColor(
+                                                    metadata.difficulty),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                _getDifficultyLabel(
+                                                    metadata.difficulty),
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                // Uncomment when need to debug
+                                //SelectableText(question.stem),
                                 // Question card with modern styling
                                 Container(
                                   width: double.infinity,
-                                    padding: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainer,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainer,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                    border: Border.all(
+                                      color:
+                                          Theme.of(context).colorScheme.outline,
+                                      width: 2,
                                     ),
-                                  ],
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline,
-                                    width: 2,
-                                  ),
                                   ),
                                   child: Html(
                                     data: HtmlProcessor.process(
                                           question.stimulus,
-                                          darkMode: Theme.of(context).brightness == Brightness.dark,
+                                          darkMode:
+                                              Theme.of(context).brightness ==
+                                                  Brightness.dark,
                                         ) +
                                         HtmlProcessor.process(
                                           question.stem,
-                                          darkMode: Theme.of(context).brightness == Brightness.dark,
+                                          darkMode:
+                                              Theme.of(context).brightness ==
+                                                  Brightness.dark,
                                         ),
                                     extensions: const [
                                       MathHtmlExtension(),
@@ -787,47 +857,52 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(20.0),
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: provider.state == QuizState.answered
-                    ? ElevatedButton.icon(
-                        key: const ValueKey('next_button'),
-                        onPressed: () {
-                          _resetPopupState();
-                          provider.nextQuestion();
-                        },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text("Next Question"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          minimumSize: const Size(double.infinity, 0),
-                        ),
-                      )
-                    : ElevatedButton.icon(
-  key: const ValueKey('submit_button'),
-  onPressed: provider.selectedAnswerId != null
-      ? () => _handleSubmitAnswer(provider)
-      : null,
-  icon: const Icon(Icons.check),
-  label: const Text("Submit Answer"),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.green,
-    foregroundColor: Colors.white,
-    disabledBackgroundColor: Theme.of(context).brightness == Brightness.dark 
-        ? Colors.grey[800] 
-        : Colors.grey[300],
-    disabledForegroundColor: Theme.of(context).brightness == Brightness.dark 
-        ? Colors.grey[600] 
-        : Colors.grey[600],
-    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    minimumSize: const Size(double.infinity, 0),
-  ),
-)
-
-              ),
+                  duration: const Duration(milliseconds: 300),
+                  child: provider.state == QuizState.answered
+                      ? ElevatedButton.icon(
+                          key: const ValueKey('next_button'),
+                          onPressed: () {
+                            _resetPopupState();
+                            provider.nextQuestion();
+                            // Incremental sync already handled in submitAnswer()
+                          },
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text("Next Question"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            minimumSize: const Size(double.infinity, 0),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          key: const ValueKey('submit_button'),
+                          onPressed: provider.selectedAnswerId != null
+                              ? () => _handleSubmitAnswer(provider)
+                              : null,
+                          icon: const Icon(Icons.check),
+                          label: const Text("Submit Answer"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[300],
+                            disabledForegroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[600]
+                                    : Colors.grey[600],
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            minimumSize: const Size(double.infinity, 0),
+                          ),
+                        )),
             ),
           ],
         ),
@@ -868,10 +943,8 @@ class __MetadataChipState extends State<_MetadataChip> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final textWidth = constraints.maxWidth -
-            iconSize -
-            gap -
-            horizontalPadding;
+        final textWidth =
+            constraints.maxWidth - iconSize - gap - horizontalPadding;
 
         final textPainter = TextPainter(
           text: TextSpan(text: widget.label, style: textStyle),
@@ -984,7 +1057,7 @@ class _ShortAnswerInputState extends State<_ShortAnswerInput> {
   @override
   Widget build(BuildContext context) {
     Color? borderColor;
-    
+
     // Determine styling based on quiz state
     if (widget.quizState == QuizState.answered && !widget.enabled) {
       final bool hasAnswerToValidate = widget.correctAnswer != null &&
@@ -1003,8 +1076,8 @@ class _ShortAnswerInputState extends State<_ShortAnswerInput> {
       decoration: InputDecoration(
         labelText: 'Your Answer',
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
         // Define a colored border for the disabled state (after submission).
         disabledBorder: OutlineInputBorder(
           borderSide: BorderSide(
@@ -1022,4 +1095,4 @@ class _ShortAnswerInputState extends State<_ShortAnswerInput> {
       textInputAction: TextInputAction.done,
     );
   }
-  }
+}

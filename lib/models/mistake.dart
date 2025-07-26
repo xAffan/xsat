@@ -2,7 +2,6 @@ import 'package:hive/hive.dart';
 
 part 'mistake.g.dart';
 
-
 @HiveType(typeId: 0)
 class Mistake extends HiveObject {
   @HiveField(0)
@@ -39,6 +38,16 @@ class Mistake extends HiveObject {
   @HiveField(10)
   final List<MistakeAnswerOption> answerOptions;
 
+  // Fields for better sync functionality
+  @HiveField(11)
+  final String? questionId;
+
+  @HiveField(12)
+  final String? questionType;
+
+  @HiveField(13)
+  final String? questionIdType; // 'external' or 'ibn'
+
   Mistake({
     required this.question,
     required this.userAnswer,
@@ -51,6 +60,9 @@ class Mistake extends HiveObject {
     required this.category,
     required this.subject,
     required this.answerOptions,
+    this.questionId,
+    this.questionType,
+    this.questionIdType,
   });
 }
 

@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:xsat/utils/sync_helper.dart';
 import '../providers/settings_provider.dart';
 import '../providers/filter_provider.dart';
 import '../providers/quiz_provider.dart';
 import '../widgets/filter_chip_bar.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isClearingCache = false;
 
   /// Helper to map difficulty codes to human-readable labels
   String _getDifficultyLabel(String code) {
@@ -215,7 +223,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
 
                       // Difficulty filters section
-                                            const Padding(
+                      const Padding(
                         padding: EdgeInsets.symmetric(
                             horizontal: 16.0, vertical: 8.0),
                         child: Text(
@@ -374,29 +382,122 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 title: const Text('Clear Cached Questions'),
                 subtitle: const Text('This will reset your quiz progress.'),
-                onTap: () async {
-                  bool? confirm = await showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Clear Cache'),
-                      content: const Text(
-                          'Are you sure you want to clear cached questions? This will reset your quiz progress.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text('Clear'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    settingsProvider.clearCache();
-                  }
-                },
+                trailing: _isClearingCache
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                enabled: !_isClearingCache,
+                onTap: _isClearingCache
+                    ? null
+                    : () async {
+                        bool? confirm = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Clear Cache'),
+                            content: const Text(
+                                'Are you sure you want to clear cached questions? This will reset your quiz progress.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text('Clear'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          setState(() {
+                            _isClearingCache = true;
+                          });
+
+                          try {
+                            // Show progress dialog
+                            if (context.mounted) {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const AlertDialog(
+                                  content: Row(
+                                    children: [
+                                      CircularProgressIndicator(),
+                                      SizedBox(width: 20),
+                                      Expanded(
+                                          child: Text(
+                                              'Clearing cached questions...')),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            await settingsProvider.clearCache();
+                            if (context.mounted) {
+                              await SyncHelper.syncClearSeenQuestions(context);
+                            }
+
+                            // Hide progress dialog
+                            if (context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+
+                            // Show success dialog
+                            if (context.mounted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Success'),
+                                  content: const Text(
+                                      'Cached questions cleared successfully!'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            // Hide progress dialog
+                            if (context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+
+                            // Show error dialog
+                            if (context.mounted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Error'),
+                                  content: Text('Failed to clear cache: $e'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isClearingCache = false;
+                              });
+                            }
+                          }
+                        }
+                      },
               ),
             ],
           );

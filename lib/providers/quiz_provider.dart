@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/cache_service.dart';
 import '../services/mistake_service.dart';
 import '../models/mistake.dart';
+import '../utils/sync_helper.dart';
 import 'settings_provider.dart';
 import 'filter_provider.dart';
 
@@ -18,9 +19,15 @@ class QuizProvider with ChangeNotifier {
   final MistakeService _mistakeService = MistakeService();
   bool _mistakeServiceInitialized = false;
 
+  // Provider dependencies for sync
+  SettingsProvider? _settingsProvider;
+  FilterProvider? _filterProvider;
+
   // The pool is now a list of typed identifiers
   List<QuestionIdentifier> _questionPool = [];
   Question? _currentQuestion;
+  QuestionIdentifier?
+      _currentQuestionIdentifier; // Store the identifier for sync
   QuizState _state = QuizState.uninitialized;
   String? _selectedAnswerId;
   String? _errorMessage;
@@ -30,6 +37,13 @@ class QuizProvider with ChangeNotifier {
   String? get selectedAnswerId => _selectedAnswerId;
   String? get errorMessage => _errorMessage;
   int get remainingQuestionCount => _questionPool.length;
+
+  // Set provider dependencies for sync
+  void setProviders(
+      SettingsProvider settingsProvider, FilterProvider filterProvider) {
+    _settingsProvider = settingsProvider;
+    _filterProvider = filterProvider;
+  }
 
   Future<void> initializeQuiz(QuestionType questionType,
       {SettingsProvider? settingsProvider,
@@ -122,6 +136,7 @@ class QuizProvider with ChangeNotifier {
 
     try {
       final nextIdentifier = _selectNextQuestionBalanced();
+      _currentQuestionIdentifier = nextIdentifier; // Store for sync
       _currentQuestion = await _apiService.getQuestionDetails(nextIdentifier);
       _state = QuizState.ready;
     } catch (e) {
@@ -180,10 +195,6 @@ class QuizProvider with ChangeNotifier {
   }
 
   void nextQuestion() {
-    if (_currentQuestion != null) {
-      // Cache the unique ID from the Question object
-      _cacheService.addSeenQuestionId(_currentQuestion!.externalId);
-    }
     _loadNextQuestion();
   }
 
@@ -217,6 +228,9 @@ class QuizProvider with ChangeNotifier {
           category: category,
           subject: subject,
           answerOptions: [],
+          questionId: _currentQuestionIdentifier?.id,
+          questionType: 'spr',
+          questionIdType: _currentQuestionIdentifier?.type.name,
         );
         // Only record mistake if answer is incorrect (if correct answer is available)
         final hasCorrect = mistake.correctAnswer.trim().isNotEmpty;
@@ -270,12 +284,26 @@ class QuizProvider with ChangeNotifier {
           category: category,
           subject: subject,
           answerOptions: answerOptions,
+          questionId: _currentQuestionIdentifier?.id,
+          questionType: 'mcq',
+          questionIdType: _currentQuestionIdentifier?.type.name,
         );
         final isCorrect = _selectedAnswerId == _currentQuestion!.correctKey;
         if (!isCorrect) {
           _mistakeService.addMistake(mistake);
         }
       }
+
+      // Mark question as seen and sync immediately after submitting answer
+      if (_currentQuestion != null) {
+        // Cache the unique ID from the Question object
+        _cacheService.addSeenQuestionId(_currentQuestion!.externalId);
+        // Trigger incremental sync for new seen question with smart merge detection
+        if (_settingsProvider != null && _filterProvider != null) {
+          SyncHelper.syncSeenQuestion(_currentQuestion!.externalId);
+        }
+      }
+
       _state = QuizState.answered;
       notifyListeners();
     }

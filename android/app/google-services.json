@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1026057941079",
+    "project_id": "xsat-2cf9e",
+    "storage_bucket": "xsat-2cf9e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1026057941079:android:82aa2c59a344cde98db312",
+        "android_client_info": {
+          "package_name": "com.xaffan.xsat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1026057941079-bkq2ijh5221g0kmh53rkiqfmunph9rlg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDy9KY7weiI9NgoIl-N3m37s_HlB9eydg0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1026057941079-bkq2ijh5221g0kmh53rkiqfmunph9rlg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1026057941079-cakp6md06b2rluq82206n6mdpugcibi1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.xaffan.xsat"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

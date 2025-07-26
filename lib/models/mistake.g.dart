@@ -28,13 +28,16 @@ class MistakeAdapter extends TypeAdapter<Mistake> {
       category: fields[8] as String,
       subject: fields[9] as String,
       answerOptions: (fields[10] as List).cast<MistakeAnswerOption>(),
+      questionId: fields[11] as String?,
+      questionType: fields[12] as String?,
+      questionIdType: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Mistake obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.question)
       ..writeByte(1)
@@ -56,7 +59,13 @@ class MistakeAdapter extends TypeAdapter<Mistake> {
       ..writeByte(9)
       ..write(obj.subject)
       ..writeByte(10)
-      ..write(obj.answerOptions);
+      ..write(obj.answerOptions)
+      ..writeByte(11)
+      ..write(obj.questionId)
+      ..writeByte(12)
+      ..write(obj.questionType)
+      ..writeByte(13)
+      ..write(obj.questionIdType);
   }
 
   @override

@@ -26,6 +26,9 @@ class FilterProvider extends ChangeNotifier {
   // Flag to track if filters have been loaded from preferences
   bool _filtersLoaded = false;
 
+  // Callback for triggering sync after filter change
+  Future<void> Function()? _syncCallback;
+
   // Total count of questions with valid metadata
   int _totalQuestionCount = 0;
 
@@ -53,13 +56,38 @@ class FilterProvider extends ChangeNotifier {
   List<QuestionIdentifier> get originalQuestions =>
       List.unmodifiable(_originalQuestions);
 
-  /// Check if any filters are active
-  bool get hasActiveFilters =>
-      _activeFilters.isNotEmpty || _activeDifficultyFilters.isNotEmpty;
+  /// Check if any filters are active and applicable to current content
+  bool get hasActiveFilters {
+    // Check if difficulty filters are active
+    if (_activeDifficultyFilters.isNotEmpty) return true;
+
+    // Check if any category filters are applicable to current content
+    if (_activeFilters.isNotEmpty) {
+      final availableCategories = getAvailableFilterCategories();
+      return _activeFilters
+          .any((filter) => availableCategories.contains(filter));
+    }
+
+    return false;
+  }
 
   /// Get count of active filters
   int get activeFilterCount =>
       _activeFilters.length + _activeDifficultyFilters.length;
+
+  /// Get count of filters that are actually being applied (applicable to current content)
+  int get applicableFilterCount {
+    int count = _activeDifficultyFilters.length;
+
+    if (_activeFilters.isNotEmpty) {
+      final availableCategories = getAvailableFilterCategories();
+      count += _activeFilters
+          .where((filter) => availableCategories.contains(filter))
+          .length;
+    }
+
+    return count;
+  }
 
   /// Get total count of questions with valid metadata
   int get totalQuestionCount => _totalQuestionCount;
@@ -77,6 +105,23 @@ class FilterProvider extends ChangeNotifier {
     if (!_filtersLoaded) {
       await _loadFiltersFromPreferences();
       _filtersLoaded = true;
+    }
+  }
+
+  /// Set the sync callback for real-time filter sync
+  void setSyncCallback(Future<void> Function()? callback) {
+    _syncCallback = callback;
+  }
+
+  /// Trigger sync if callback is set
+  Future<void> _triggerSync() async {
+    if (_syncCallback != null) {
+      try {
+        await _syncCallback!();
+      } catch (e) {
+        // Silently fail - sync shouldn't break filter updates
+        debugPrint('Filter sync failed: $e');
+      }
     }
   }
 
@@ -133,6 +178,7 @@ class FilterProvider extends ChangeNotifier {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
+      await _triggerSync();
     }
   }
 
@@ -142,6 +188,7 @@ class FilterProvider extends ChangeNotifier {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
+      await _triggerSync();
     }
   }
 
@@ -169,6 +216,7 @@ class FilterProvider extends ChangeNotifier {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
+      await _triggerSync();
     }
   }
 
@@ -183,6 +231,7 @@ class FilterProvider extends ChangeNotifier {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
+      await _triggerSync();
     }
   }
 
@@ -192,6 +241,7 @@ class FilterProvider extends ChangeNotifier {
       await _saveFiltersToPreferences();
       _applyFilters();
       notifyListeners();
+      await _triggerSync();
     }
   }
 
@@ -362,9 +412,27 @@ class FilterProvider extends ChangeNotifier {
 
     _totalQuestionCount = questionsWithMetadata.length;
 
+    // Get available categories for the current question set to determine which filters to apply
+    final availableCategories = <String>{};
+    for (final question in questionsWithMetadata) {
+      if (question.metadata?.primaryClassCode != null) {
+        final userFriendlyCategory =
+            CategoryMappingService.getUserFriendlyCategory(
+                question.metadata!.primaryClassCode);
+        if (CategoryMappingService.isValidCategory(userFriendlyCategory)) {
+          availableCategories.add(userFriendlyCategory);
+        }
+      }
+    }
+
+    // Filter active filters to only include those available for current content
+    final applicableFilters = _activeFilters
+        .where((filter) => availableCategories.contains(filter))
+        .toSet();
+
     List<QuestionIdentifier> matchedQuestions;
-    if (_activeFilters.isEmpty && _activeDifficultyFilters.isEmpty) {
-      // No filters active, all questions with metadata are considered matched
+    if (applicableFilters.isEmpty && _activeDifficultyFilters.isEmpty) {
+      // No applicable filters active, all questions with metadata are considered matched
       matchedQuestions = questionsWithMetadata;
     } else {
       // Apply OR logic within each filter type, AND logic between filter types
@@ -372,12 +440,12 @@ class FilterProvider extends ChangeNotifier {
         bool categoryMatch = true;
         bool difficultyMatch = true;
 
-        // Check category filter (if any active)
-        if (_activeFilters.isNotEmpty) {
+        // Check category filter (only if applicable filters exist)
+        if (applicableFilters.isNotEmpty) {
           final questionCategory =
               CategoryMappingService.getUserFriendlyCategory(
                   question.metadata!.primaryClassCode);
-          categoryMatch = _activeFilters.contains(questionCategory);
+          categoryMatch = applicableFilters.contains(questionCategory);
         }
 
         // Check difficulty filter (if any active)

@@ -94,6 +94,15 @@ class ApiService {
         tag: 'ApiService',
       );
 
+      // Add web-specific logging to help track duplicate requests
+      if (identical(0, 0.0)) {
+        // This is true only on web
+        AppLogger.info(
+          '🐛 [Web][ApiService] Fetching question identifiers for test: $test, domain: $domain',
+          tag: 'ApiService',
+        );
+      }
+
       final response = await http
           .post(
         url,

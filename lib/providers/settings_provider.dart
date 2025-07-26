@@ -17,6 +17,9 @@ class SettingsProvider with ChangeNotifier {
   bool _excludeActiveQuestions = false; // New
   bool _onboardingCompleted = false; // New
 
+  // Callback for sync operations
+  Future<void> Function()? _syncCallback;
+
   // Getters
   bool get isCachingEnabled => _isCachingEnabled;
   QuestionType get questionType => _questionType;
@@ -44,6 +47,23 @@ class SettingsProvider with ChangeNotifier {
     loadSettings();
   }
 
+  /// Set the sync callback
+  void setSyncCallback(Future<void> Function()? callback) {
+    _syncCallback = callback;
+  }
+
+  /// Trigger sync if callback is available
+  Future<void> _triggerSync() async {
+    if (_syncCallback != null) {
+      try {
+        await _syncCallback!();
+      } catch (e) {
+        // Silently fail - sync shouldn't break settings updates
+        debugPrint('Settings sync failed: $e');
+      }
+    }
+  }
+
   Future<void> loadSettings() async {
     _isCachingEnabled = await _cacheService.isCachingEnabled();
     _questionType = await _cacheService.getQuestionType();
@@ -59,6 +79,7 @@ class SettingsProvider with ChangeNotifier {
     _isCachingEnabled = value;
     await _cacheService.setCachingEnabled(value);
     notifyListeners();
+    await _triggerSync();
   }
 
   Future<void> updateQuestionType(QuestionType newType) async {
@@ -66,6 +87,7 @@ class SettingsProvider with ChangeNotifier {
     _questionType = newType;
     await _cacheService.setQuestionType(newType);
     notifyListeners();
+    await _triggerSync();
   }
 
   // New methods for theme
@@ -74,12 +96,14 @@ class SettingsProvider with ChangeNotifier {
     _themePreference = newPreference;
     await _cacheService.setThemePreference(newPreference);
     notifyListeners();
+    // Don't sync theme appearance preferences
   }
 
   Future<void> toggleOledMode(bool value) async {
     _isOledMode = value;
     await _cacheService.setOledMode(value);
     notifyListeners();
+    await _triggerSync(); // YES - sync OLED mode
   }
 
   Future<void> toggleExcludeActiveQuestions(bool value) async {
@@ -87,6 +111,7 @@ class SettingsProvider with ChangeNotifier {
     await _cacheService.setExcludeActiveQuestions(value);
     // Exclude active questions now applies instantly, no restart needed
     notifyListeners();
+    await _triggerSync();
   }
 
   Future<void> setOnboardingCompleted(bool value) async {

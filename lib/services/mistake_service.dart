@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import '../models/mistake.dart';
+import '../utils/sync_helper.dart';
 
 class MistakeService {
   static const String _boxName = 'mistakes';
@@ -17,6 +18,9 @@ class MistakeService {
   Future<void> addMistake(Mistake mistake) async {
     final box = Hive.box<Mistake>(_boxName);
     await box.add(mistake);
+
+    // Sync to cloud immediately (non-blocking)
+    SyncHelper.syncMistake(mistake);
   }
 
   List<Mistake> getMistakes() {
