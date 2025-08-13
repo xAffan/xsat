@@ -81,10 +81,31 @@ class QuizProvider with ChangeNotifier {
       ].map((q) => q.id).toSet();
 
       final seenIds = (await _cacheService.getSeenQuestionIds()).toSet();
+
+      // Debug: Log seen IDs and question filtering
+      print('DEBUG: Found ${seenIds.length} seen questions in cache');
+      print(
+          'DEBUG: Total questions before filtering: ${allIdentifiers.length}');
+
       // Filter the identifier list based on seen string IDs
       final unseenQuestions = allIdentifiers
           .where((identifier) => !seenIds.contains(identifier.id))
           .toList();
+
+      // Debug: Check if any seen questions are still in the pool
+      final stillInPool = allIdentifiers
+          .where((identifier) => seenIds.contains(identifier.id))
+          .toList();
+      if (stillInPool.isNotEmpty) {
+        print(
+            'WARNING: ${stillInPool.length} seen questions still in original pool!');
+        for (var q in stillInPool.take(3)) {
+          // Show first 3
+          print('  Seen question still in pool: ${q.id}');
+        }
+      }
+
+      print('DEBUG: Filtered to ${unseenQuestions.length} unseen questions');
 
       // Initialize FilterProvider and set questions
       if (filterProvider != null) {
@@ -137,7 +158,23 @@ class QuizProvider with ChangeNotifier {
     try {
       final nextIdentifier = _selectNextQuestionBalanced();
       _currentQuestionIdentifier = nextIdentifier; // Store for sync
+
+      // Debug: Log the selected question
+      print('DEBUG: Selected question ID: ${nextIdentifier.id}');
+      print(
+          'DEBUG: Question pool size before selection: ${_questionPool.length + 1}');
+
       _currentQuestion = await _apiService.getQuestionDetails(nextIdentifier);
+
+      // Debug: Verify the loaded question matches the identifier
+      print(
+          'DEBUG: Loaded question external ID: ${_currentQuestion!.externalId}');
+      if (_currentQuestion!.externalId != nextIdentifier.id) {
+        print('ERROR: Question ID mismatch after loading!');
+        print('  Expected: ${nextIdentifier.id}');
+        print('  Got: ${_currentQuestion!.externalId}');
+      }
+
       _state = QuizState.ready;
     } catch (e) {
       _state = QuizState.error;
@@ -295,12 +332,24 @@ class QuizProvider with ChangeNotifier {
       }
 
       // Mark question as seen and sync immediately after submitting answer
-      if (_currentQuestion != null) {
-        // Cache the unique ID from the Question object
-        _cacheService.addSeenQuestionId(_currentQuestion!.externalId);
+      if (_currentQuestion != null && _currentQuestionIdentifier != null) {
+        // Debug: Check for ID consistency
+        if (_currentQuestion!.externalId != _currentQuestionIdentifier!.id) {
+          print('WARNING: ID mismatch detected!');
+          print('Question.externalId: "${_currentQuestion!.externalId}"');
+          print('Identifier.id: "${_currentQuestionIdentifier!.id}"');
+          print('Question type: ${_currentQuestion!.type}');
+          print('Identifier type: ${_currentQuestionIdentifier!.type}');
+        } else {
+          print(
+              'DEBUG: IDs match correctly: "${_currentQuestionIdentifier!.id}"');
+        }
+
+        // Cache the unique ID from the QuestionIdentifier to ensure consistency
+        _cacheService.addSeenQuestionId(_currentQuestionIdentifier!.id);
         // Trigger incremental sync for new seen question with smart merge detection
         if (_settingsProvider != null && _filterProvider != null) {
-          SyncHelper.syncSeenQuestion(_currentQuestion!.externalId);
+          SyncHelper.syncSeenQuestion(_currentQuestionIdentifier!.id);
         }
       }
 
@@ -322,8 +371,9 @@ class QuizProvider with ChangeNotifier {
       _questionPool = List.from(filterProvider.filteredQuestions);
 
       // Remove current question from pool if it exists to avoid duplication
-      if (_currentQuestion != null) {
-        _questionPool.removeWhere((q) => q.id == _currentQuestion!.externalId);
+      if (_currentQuestion != null && _currentQuestionIdentifier != null) {
+        _questionPool
+            .removeWhere((q) => q.id == _currentQuestionIdentifier!.id);
       }
 
       _questionPool.shuffle(Random());
@@ -336,8 +386,9 @@ class QuizProvider with ChangeNotifier {
         // If we have a current question and it matches filters, keep it
         // Otherwise load next question
         if (_currentQuestion != null &&
+            _currentQuestionIdentifier != null &&
             filterProvider.filteredQuestions
-                .any((q) => q.id == _currentQuestion!.externalId)) {
+                .any((q) => q.id == _currentQuestionIdentifier!.id)) {
           // Preserve the previous state (ready or answered) since the current question is still valid
           _state = previousState == QuizState.answered
               ? QuizState.answered
@@ -366,7 +417,8 @@ class QuizProvider with ChangeNotifier {
 
     // Check if the current question is still in the pool
     final currentQuestionInPool = _currentQuestion != null &&
-        newQuestionPool.any((q) => q.id == _currentQuestion!.externalId);
+        _currentQuestionIdentifier != null &&
+        newQuestionPool.any((q) => q.id == _currentQuestionIdentifier!.id);
 
     if (!currentQuestionInPool && _currentQuestion != null) {
       // Current question is no longer in the pool, need to load a new one

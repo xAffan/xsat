@@ -9,21 +9,43 @@ class CacheService {
   Future<void> addSeenQuestionId(String id) async {
     final prefs = await SharedPreferences.getInstance();
     final isEnabled = prefs.getBool(_cachingEnabledKey) ?? true;
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      print('DEBUG: Caching is disabled, not adding question: "$id"');
+      return;
+    }
 
     final seenIds = prefs.getStringList(_seenQuestionsKey) ?? [];
     if (!seenIds.contains(id)) {
       seenIds.add(id);
       await prefs.setStringList(_seenQuestionsKey, seenIds);
 
+      // Verify the save was successful
+      final verifyIds = prefs.getStringList(_seenQuestionsKey) ?? [];
+      if (verifyIds.contains(id)) {
+        print('DEBUG: Successfully added question to seen list: "$id"');
+        print('DEBUG: Total seen questions now: ${seenIds.length}');
+      } else {
+        print('ERROR: Failed to save seen question to SharedPreferences!');
+      }
+
       // Sync to cloud immediately (non-blocking)
       SyncHelper.syncSeenQuestion(id);
+    } else {
+      print('DEBUG: Question already in seen list: "$id"');
     }
   }
 
   Future<List<String>> getSeenQuestionIds() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_seenQuestionsKey) ?? [];
+    final seenIds = prefs.getStringList(_seenQuestionsKey) ?? [];
+
+    // Debug logging
+    print('DEBUG: Retrieved ${seenIds.length} seen questions from cache');
+    if (seenIds.isNotEmpty) {
+      print('DEBUG: First few seen IDs: ${seenIds.take(5).toList()}');
+    }
+
+    return seenIds;
   }
 
   Future<void> clearSeenQuestions() async {
