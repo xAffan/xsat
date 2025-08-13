@@ -295,12 +295,15 @@ class QuizProvider with ChangeNotifier {
       }
 
       // Mark question as seen and sync immediately after submitting answer
-      if (_currentQuestion != null) {
-        // Cache the unique ID from the Question object
-        _cacheService.addSeenQuestionId(_currentQuestion!.externalId);
-        // Trigger incremental sync for new seen question with smart merge detection
+      if (_currentQuestion != null && _currentQuestionIdentifier != null) {
+        final seenId = _currentQuestionIdentifier!.id;
+        // Cache the identifier ID (matches the pool IDs, avoids type mismatch)
+        _cacheService.addSeenQuestionId(seenId);
+        // Inform FilterProvider so it can exclude this question immediately
+        _filterProvider?.addSeenQuestionId(seenId);
+        // Trigger incremental sync for new seen question
         if (_settingsProvider != null && _filterProvider != null) {
-          SyncHelper.syncSeenQuestion(_currentQuestion!.externalId);
+          SyncHelper.syncSeenQuestion(seenId);
         }
       }
 

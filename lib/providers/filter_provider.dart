@@ -377,6 +377,11 @@ class FilterProvider extends ChangeNotifier {
       }).toList();
     }
 
+    // Exclude seen questions to avoid showing already completed ones
+    if (_seenQuestionIds.isNotEmpty) {
+      questions = questions.where((q) => !_seenQuestionIds.contains(q.id)).toList();
+    }
+
     return questions;
   }
 
@@ -403,6 +408,12 @@ class FilterProvider extends ChangeNotifier {
       workingSet = workingSet.where((question) {
         return !_liveQuestionIds.contains(question.id);
       }).toList();
+    }
+
+    // Exclude seen questions so previously done items don't reappear
+    if (_seenQuestionIds.isNotEmpty) {
+      workingSet =
+          workingSet.where((question) => !_seenQuestionIds.contains(question.id)).toList();
     }
 
     // Calculate total questions with valid metadata (after subject and exclusion filters)
@@ -463,6 +474,14 @@ class FilterProvider extends ChangeNotifier {
     // Update filtered questions and count
     _filteredQuestions = matchedQuestions;
     _filteredQuestionCount = _filteredQuestions.length;
+  }
+
+  /// Add a seen question ID and reapply filters so it won't be offered again
+  void addSeenQuestionId(String id) {
+    if (_seenQuestionIds.add(id)) {
+      _applyFilters();
+      notifyListeners();
+    }
   }
 
   /// Manually update question counts
